@@ -8,6 +8,9 @@ import {
 const WASM_BASE =
   "/mediapipe/wasm";
 const MODEL_URL = "/mediapipe/models/hand_landmarker.task";
+const DETECTION_INTERVAL_MS = 36;
+const PREDICTION_HOLD_MS = 125;
+const PREDICTION_LEAD_MS = 42;
 
 export type CameraStatus =
   | "idle"
@@ -59,13 +62,27 @@ function mapLandmarkToDisplay(
   };
 }
 
-function getPrimaryFinger(result: HandLandmarkerResult) {
+function getIndexFingerPoint(result: HandLandmarkerResult) {
   const landmarks = result.landmarks[0];
   if (!landmarks) {
     return null;
   }
 
-  return landmarks[8] ?? null;
+  const tip = landmarks[8];
+  const dip = landmarks[7];
+  if (!tip) {
+    return null;
+  }
+
+  if (!dip) {
+    return tip;
+  }
+
+  return {
+    x: tip.x + (tip.x - dip.x) * 0.16,
+    y: tip.y + (tip.y - dip.y) * 0.16,
+    z: tip.z,
+  };
 }
 
 function isInterruptedPlayError(error: unknown) {
@@ -121,6 +138,9 @@ export function useHandTracker({
   const runningRef = useRef(false);
   const lastVideoTimeRef = useRef(-1);
   const lastPointRef = useRef<HandPoint | null>(null);
+  const lastDetectionAtRef = useRef(0);
+  const lastSeenAtRef = useRef(0);
+  const velocityRef = useRef({ x: 0, y: 0 });
   const requestIdRef = useRef(0);
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const [status, setStatus] = useState<CameraStatus>("idle");
@@ -138,9 +158,9 @@ export function useHandTracker({
           ...baseOptions,
           delegate: "GPU",
         },
-        minHandDetectionConfidence: 0.48,
-        minHandPresenceConfidence: 0.48,
-        minTrackingConfidence: 0.48,
+        minHandDetectionConfidence: 0.36,
+        minHandPresenceConfidence: 0.36,
+        minTrackingConfidence: 0.38,
         numHands: 1,
         runningMode: "VIDEO",
       });
@@ -150,9 +170,9 @@ export function useHandTracker({
           ...baseOptions,
           delegate: "CPU",
         },
-        minHandDetectionConfidence: 0.48,
-        minHandPresenceConfidence: 0.48,
-        minTrackingConfidence: 0.48,
+        minHandDetectionConfidence: 0.36,
+        minHandPresenceConfidence: 0.36,
+        minTrackingConfidence: 0.38,
         numHands: 1,
         runningMode: "VIDEO",
       });
@@ -182,9 +202,35 @@ export function useHandTracker({
     }
     lastPointRef.current = null;
     lastVideoTimeRef.current = -1;
+    lastDetectionAtRef.current = 0;
+    lastSeenAtRef.current = 0;
+    velocityRef.current = { x: 0, y: 0 };
     setError(null);
     setStatus("idle");
   }, [stopLoop]);
+
+  const emitPredictedPoint = useCallback((now: number) => {
+    const lastPoint = lastPointRef.current;
+    if (!lastPoint) {
+      return false;
+    }
+
+    const age = now - lastPoint.time;
+    if (age > PREDICTION_HOLD_MS) {
+      return false;
+    }
+
+    const confidenceScale = Math.max(0.35, 1 - age / PREDICTION_HOLD_MS);
+    const lead = Math.min(age, PREDICTION_LEAD_MS);
+    callbackRef.current({
+      x: lastPoint.x + velocityRef.current.x * lead * 0.72,
+      y: lastPoint.y + velocityRef.current.y * lead * 0.72,
+      visible: true,
+      confidence: lastPoint.confidence * confidenceScale,
+      time: now,
+    });
+    return true;
+  }, []);
 
   const runDetection = useCallback(() => {
     const video = videoRef.current;
@@ -194,20 +240,32 @@ export function useHandTracker({
       return;
     }
 
+    const now = performance.now();
+    if (now - lastDetectionAtRef.current < DETECTION_INTERVAL_MS) {
+      emitPredictedPoint(now);
+      animationRef.current = requestAnimationFrame(runDetection);
+      return;
+    }
+
     if (
       video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
       video.currentTime !== lastVideoTimeRef.current
     ) {
       lastVideoTimeRef.current = video.currentTime;
-      const now = performance.now();
-      const result = landmarker.detectForVideo(video, now);
-      const finger = getPrimaryFinger(result);
+      lastDetectionAtRef.current = now;
+      let result: HandLandmarkerResult | null = null;
+      try {
+        result = landmarker.detectForVideo(video, now);
+      } catch {
+        result = null;
+      }
+      const finger = result ? getIndexFingerPoint(result) : null;
 
       if (finger) {
         const mapped = mapLandmarkToDisplay(video, finger);
         const previous = lastPointRef.current;
         const elapsed = Math.max(now - (previous?.time ?? now), 1);
-        const blend = previous ? (elapsed > 42 ? 0.78 : 0.62) : 1;
+        const blend = previous ? (elapsed > 56 ? 0.88 : 0.74) : 1;
         const filtered = previous
           ? {
               x: previous.x + (mapped.x - previous.x) * blend,
@@ -216,33 +274,45 @@ export function useHandTracker({
           : mapped;
         const vx = previous ? (filtered.x - previous.x) / elapsed : 0;
         const vy = previous ? (filtered.y - previous.y) / elapsed : 0;
-        const predicted = {
-          x: filtered.x + vx * 22,
-          y: filtered.y + vy * 22,
+        velocityRef.current = {
+          x: velocityRef.current.x * 0.38 + vx * 0.62,
+          y: velocityRef.current.y * 0.38 + vy * 0.62,
         };
+        const predicted = {
+          x: filtered.x + velocityRef.current.x * 28,
+          y: filtered.y + velocityRef.current.y * 28,
+        };
+        const depthConfidence = 1 - Math.min(Math.abs(finger.z ?? 0), 0.26) * 0.65;
         const point = {
           x: predicted.x,
           y: predicted.y,
           visible: true,
-          confidence: 1 - Math.min(Math.max(finger.z, -0.25), 0.25),
+          confidence: depthConfidence,
           time: now,
         };
+        lastSeenAtRef.current = now;
         lastPointRef.current = point;
         callbackRef.current(point);
       } else {
-        lastPointRef.current = null;
-        callbackRef.current({
-          x: 0,
-          y: 0,
-          visible: false,
-          confidence: 0,
-          time: performance.now(),
-        });
+        const keptPrediction = now - lastSeenAtRef.current <= PREDICTION_HOLD_MS && emitPredictedPoint(now);
+        if (!keptPrediction) {
+          lastPointRef.current = null;
+          velocityRef.current = { x: 0, y: 0 };
+          callbackRef.current({
+            x: 0,
+            y: 0,
+            visible: false,
+            confidence: 0,
+            time: now,
+          });
+        }
       }
+    } else {
+      emitPredictedPoint(now);
     }
 
     animationRef.current = requestAnimationFrame(runDetection);
-  }, []);
+  }, [emitPredictedPoint]);
 
   const start = useCallback(() => {
     if (runningRef.current) {
@@ -274,9 +344,9 @@ export function useHandTracker({
             audio: false,
             video: {
               facingMode: "user",
-              width: { ideal: 960 },
-              height: { ideal: 540 },
-              frameRate: { ideal: 60, min: 30 },
+              width: { ideal: 640, max: 960 },
+              height: { ideal: 360, max: 540 },
+              frameRate: { ideal: 30, max: 30 },
             },
           }));
 

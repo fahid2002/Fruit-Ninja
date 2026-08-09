@@ -190,7 +190,7 @@ export class FruitArcade {
   }
 
   setHandPoint(point: HandPoint) {
-    if (!this.playing || !point.visible || point.confidence < 0.42) {
+    if (!this.playing || !point.visible || point.confidence < 0.28) {
       return;
     }
 
