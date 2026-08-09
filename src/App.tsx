@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Apple, Camera, Heart, Play, RotateCcw, TriangleAlert } from "lucide-react";
+import { Apple, Camera, CameraOff, Play, RotateCcw, TriangleAlert, X } from "lucide-react";
 import { FruitArcade } from "./game/FruitArcade";
 import { useHandTracker, type HandPoint } from "./hooks/useHandTracker";
 
@@ -11,6 +11,8 @@ function cameraLabel(status: ReturnType<typeof useHandTracker>["status"]) {
       return "Loading tracker";
     case "tracking":
       return "Camera live";
+    case "camera-only":
+      return "Camera on";
     case "fallback":
       return "Pointer fallback";
     default:
@@ -34,6 +36,7 @@ function App() {
   const handTracker = useHandTracker({
     onPoint: handleHandPoint,
   });
+  const cameraActive = handTracker.status !== "idle";
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -62,20 +65,27 @@ function App() {
     setStarted(true);
     setGameOver(false);
     setFinalScore(0);
-    gameRef.current?.reset();
-    gameRef.current?.start();
+    gameRef.current?.startRound();
     await handTracker.start();
   }, [handTracker]);
 
   const tryAgain = useCallback(() => {
     setGameOver(false);
     setFinalScore(0);
-    gameRef.current?.reset();
-    gameRef.current?.start();
+    gameRef.current?.startRound();
     if (handTracker.status !== "tracking") {
       void handTracker.start();
     }
   }, [handTracker]);
+
+  const toggleCamera = useCallback(async () => {
+    if (cameraActive) {
+      handTracker.stop();
+      return;
+    }
+
+    await handTracker.start();
+  }, [cameraActive, handTracker]);
 
   return (
     <main className="gameShell">
@@ -95,16 +105,22 @@ function App() {
           <span>{cameraLabel(handTracker.status)}</span>
         </div>
 
-        <div className="lifeBadge" aria-label={`${lives} lives remaining`}>
-          {[0, 1, 2].map((life) => (
-            <Heart
-              key={life}
-              size={24}
-              fill={life < lives ? "currentColor" : "transparent"}
-              className={life < lives ? "lifeIcon isActive" : "lifeIcon"}
-              strokeWidth={2.4}
-            />
-          ))}
+        <div className="rightHud">
+          <div className="lifeBadge" aria-label={`${lives} lives remaining`}>
+            {[0, 1, 2].map((life) => (
+              <X
+                key={life}
+                size={26}
+                className={life < lives ? "lifeIcon isActive" : "lifeIcon"}
+                strokeWidth={4}
+              />
+            ))}
+          </div>
+
+          <button className="cameraToggle" type="button" onClick={() => void toggleCamera()}>
+            {cameraActive ? <CameraOff size={17} /> : <Camera size={17} />}
+            <span>{cameraActive ? "Camera Off" : "Camera On"}</span>
+          </button>
         </div>
       </section>
 

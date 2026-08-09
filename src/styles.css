@@ -115,7 +115,8 @@ button {
 
 .scoreBadge,
 .lifeBadge,
-.cameraBadge {
+.cameraBadge,
+.cameraToggle {
   min-height: 48px;
   border: 2px solid rgba(245, 207, 119, 0.28);
   border-radius: 8px;
@@ -172,12 +173,42 @@ button {
 }
 
 .lifeBadge {
-  justify-self: end;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 9px;
   padding: 10px 14px;
   color: rgba(255, 255, 255, 0.42);
+}
+
+.rightHud {
+  justify-self: end;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.cameraToggle {
+  pointer-events: auto;
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-color: rgba(126, 220, 90, 0.34);
+  color: #d9ffba;
+  padding: 0 12px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.cameraToggle:hover {
+  transform: translateY(-1px);
+}
+
+.cameraToggle:active {
+  transform: translateY(1px);
 }
 
 .lifeIcon {
@@ -186,8 +217,8 @@ button {
 }
 
 .lifeIcon.isActive {
-  color: #ff304f;
-  filter: drop-shadow(0 0 10px rgba(255, 48, 79, 0.62));
+  color: #ff1e1e;
+  filter: drop-shadow(0 0 10px rgba(255, 32, 32, 0.7));
 }
 
 .startOverlay,
@@ -372,9 +403,18 @@ h1 {
     font-size: 1.75rem;
   }
 
+  .rightHud {
+    gap: 7px;
+  }
+
   .lifeBadge {
     padding-inline: 10px;
     gap: 6px;
+  }
+
+  .cameraToggle {
+    min-height: 34px;
+    padding-inline: 10px;
   }
 
   .startOverlay,

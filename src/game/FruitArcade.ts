@@ -26,6 +26,12 @@ type GameObject = {
   bornAt: number;
 };
 
+type QueuedSpawn = {
+  kind: GameKind;
+  laneIndex: number;
+  laneCount: number;
+};
+
 type TrailPoint = Point & {
   t: number;
 };
@@ -101,16 +107,19 @@ export class FruitArcade {
   private halves: FruitHalf[] = [];
   private splats: JuiceSplat[] = [];
   private trail: TrailPoint[] = [];
+  private spawnQueue: QueuedSpawn[] = [];
   private width = 1;
   private height = 1;
   private score = 0;
   private lives = 3;
   private nextSpawnAt = 0;
+  private nextWaveAt = 0;
   private startedAt = performance.now();
   private lastTick = performance.now();
   private animationId: number | null = null;
   private objectId = 0;
   private gameOver = false;
+  private playing = false;
   private pointerDown = false;
   private bombFlash = 0;
 
@@ -123,7 +132,7 @@ export class FruitArcade {
     this.ctx = context;
     this.callbacks = callbacks;
     this.engine.gravity.y = 1;
-    this.engine.gravity.scale = 0.00155;
+    this.engine.gravity.scale = 0.00108;
     this.resize();
     this.bindEvents();
   }
@@ -136,7 +145,13 @@ export class FruitArcade {
     this.lastTick = performance.now();
     this.startedAt = this.lastTick;
     this.nextSpawnAt = this.lastTick + 420;
+    this.nextWaveAt = this.lastTick + 420;
     this.animationId = requestAnimationFrame(this.tick);
+  }
+
+  startRound() {
+    this.reset();
+    this.playing = true;
   }
 
   reset() {
@@ -146,12 +161,15 @@ export class FruitArcade {
     this.halves = [];
     this.splats = [];
     this.trail = [];
+    this.spawnQueue = [];
     this.score = 0;
     this.lives = 3;
     this.gameOver = false;
+    this.playing = false;
     this.bombFlash = 0;
     this.startedAt = performance.now();
-    this.nextSpawnAt = this.startedAt + 420;
+    this.nextSpawnAt = this.startedAt + 720;
+    this.nextWaveAt = this.startedAt + 720;
     this.callbacks.onScoreChange(this.score);
     this.callbacks.onLivesChange(this.lives);
   }
@@ -170,7 +188,7 @@ export class FruitArcade {
   }
 
   setHandPoint(point: HandPoint) {
-    if (!point.visible || point.confidence < 0.42) {
+    if (!this.playing || !point.visible || point.confidence < 0.42) {
       return;
     }
 
@@ -213,20 +231,46 @@ export class FruitArcade {
   };
 
   private spawnIfNeeded(time: number) {
-    if (this.gameOver || time < this.nextSpawnAt || this.objects.length > 8) {
+    if (!this.playing || this.gameOver) {
       return;
     }
 
-    const seconds = (time - this.startedAt) / 1000;
-    const maxWaveSize = this.width < 620 ? 3 : 4;
-    const waveSize = Math.min(maxWaveSize, 1 + Math.floor(seconds / 20) + Math.floor(Math.random() * 2));
-
-    for (let index = 0; index < waveSize; index += 1) {
-      const bombChance = Math.min(0.22, 0.09 + seconds * 0.0028);
-      this.spawnObject(Math.random() < bombChance ? "bomb" : "fruit", index, waveSize);
+    if (this.spawnQueue.length > 0) {
+      if (time < this.nextSpawnAt) {
+        return;
+      }
+      const nextSpawn = this.spawnQueue.shift()!;
+      this.spawnObject(nextSpawn.kind, nextSpawn.laneIndex, nextSpawn.laneCount);
+      this.nextSpawnAt = time + randomBetween(170, 285);
+      return;
     }
 
-    this.nextSpawnAt = time + randomBetween(640, Math.max(420, 920 - seconds * 7));
+    const maxObjects = Math.min(this.width < 620 ? 5 : 7, 3 + Math.floor(this.score / 12));
+    if (time < this.nextWaveAt || this.objects.length >= maxObjects) {
+      return;
+    }
+
+    const level = Math.floor(this.score / 10);
+    const maxWaveSize = this.width < 620 ? 3 : 5;
+    const baseWaveSize = 1 + Math.floor(level / 2);
+    const waveSize = clamp(baseWaveSize + (Math.random() < 0.35 + level * 0.025 ? 1 : 0), 1, maxWaveSize);
+    const bombChance = this.score < 8 ? 0 : Math.min(0.16, 0.035 + level * 0.012);
+    let bombsInWave = 0;
+    const maxBombsInWave = this.score < 25 ? 1 : 2;
+
+    this.spawnQueue = Array.from({ length: waveSize }, (_, index) => {
+      const canBomb = bombsInWave < maxBombsInWave && Math.random() < bombChance;
+      if (canBomb) {
+        bombsInWave += 1;
+      }
+      return {
+        kind: canBomb ? "bomb" : "fruit",
+        laneIndex: index,
+        laneCount: waveSize,
+      };
+    });
+    this.nextSpawnAt = time;
+    this.nextWaveAt = time + randomBetween(Math.max(720, 1500 - level * 80), Math.max(1000, 2200 - level * 95));
   }
 
   private spawnObject(kind: GameKind, index: number, waveSize: number) {
@@ -235,8 +279,9 @@ export class FruitArcade {
     const radius =
       (kind === "bomb" ? randomBetween(34, 42) : randomBetween(skin.radiusMin, skin.radiusMax)) * scale;
     const laneWidth = this.width / (waveSize + 1);
-    const laneX = laneWidth * (index + 1);
-    const startX = clamp(laneX + randomBetween(-laneWidth * 0.12, laneWidth * 0.12), radius, this.width - radius);
+    const mirroredIndex = Math.random() < 0.5 ? index : waveSize - index - 1;
+    const laneX = laneWidth * (mirroredIndex + 1);
+    const startX = clamp(laneX + randomBetween(-laneWidth * 0.1, laneWidth * 0.1), radius, this.width - radius);
     const startY = this.height + radius + randomBetween(22, 92);
     const body = Bodies.circle(startX, startY, radius, {
       collisionFilter: {
@@ -249,9 +294,14 @@ export class FruitArcade {
       restitution: 0,
     });
 
+    const level = Math.floor(this.score / 10);
+    const highArc = kind === "fruit" && Math.random() < Math.min(0.72, 0.44 + level * 0.035);
+    const launchAngle = (randomBetween(highArc ? 76 : 65, highArc ? 104 : 115) * Math.PI) / 180;
+    const speed = randomBetween(highArc ? 27 : 21, highArc ? 36 : 30) * clamp(this.height / 760, 0.92, 1.18);
+    const horizontalDirection = startX < this.width * 0.5 ? 1 : -1;
     Body.setVelocity(body, {
-      x: randomBetween(-1.9, 1.9),
-      y: -randomBetween(15.8, 22.5) * clamp(this.height / 760, 0.86, 1.12),
+      x: Math.cos(launchAngle) * speed * horizontalDirection + randomBetween(-1.2, 1.2),
+      y: -Math.sin(launchAngle) * speed,
     });
     Body.setAngularVelocity(body, randomBetween(-0.15, 0.15));
     Composite.add(this.engine.world, body);
@@ -286,7 +336,7 @@ export class FruitArcade {
     this.trail.push(point);
     this.trail = this.trail.filter((entry) => point.t - entry.t < 190);
 
-    if (!previous || point.t - previous.t > 120 || this.gameOver) {
+    if (!this.playing || !previous || point.t - previous.t > 120 || this.gameOver) {
       return;
     }
 
@@ -320,6 +370,7 @@ export class FruitArcade {
       this.addExplosion(object.body.position.x, object.body.position.y);
       if (this.lives === 0) {
         this.gameOver = true;
+        this.playing = false;
         this.callbacks.onGameOver(this.score);
       }
       return;

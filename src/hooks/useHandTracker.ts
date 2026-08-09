@@ -6,15 +6,15 @@ import {
 } from "@mediapipe/tasks-vision";
 
 const WASM_BASE =
-  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm";
-const MODEL_URL =
-  "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+  "/mediapipe/wasm";
+const MODEL_URL = "/mediapipe/models/hand_landmarker.task";
 
 export type CameraStatus =
   | "idle"
   | "requesting"
   | "loading-model"
   | "tracking"
+  | "camera-only"
   | "fallback";
 
 export type HandPoint = {
@@ -80,6 +80,39 @@ export function useHandTracker({
   const [status, setStatus] = useState<CameraStatus>("idle");
   const [error, setError] = useState<string | null>(null);
 
+  const createLandmarker = useCallback(async () => {
+    const fileset = await FilesetResolver.forVisionTasks(WASM_BASE);
+    const baseOptions = {
+      modelAssetPath: MODEL_URL,
+    };
+
+    try {
+      return await HandLandmarker.createFromOptions(fileset, {
+        baseOptions: {
+          ...baseOptions,
+          delegate: "GPU",
+        },
+        minHandDetectionConfidence: 0.48,
+        minHandPresenceConfidence: 0.48,
+        minTrackingConfidence: 0.48,
+        numHands: 1,
+        runningMode: "VIDEO",
+      });
+    } catch {
+      return HandLandmarker.createFromOptions(fileset, {
+        baseOptions: {
+          ...baseOptions,
+          delegate: "CPU",
+        },
+        minHandDetectionConfidence: 0.48,
+        minHandPresenceConfidence: 0.48,
+        minTrackingConfidence: 0.48,
+        numHands: 1,
+        runningMode: "VIDEO",
+      });
+    }
+  }, []);
+
   useEffect(() => {
     callbackRef.current = onPoint;
   }, [onPoint]);
@@ -99,6 +132,9 @@ export function useHandTracker({
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    lastPointRef.current = null;
+    lastVideoTimeRef.current = -1;
+    setError(null);
     setStatus("idle");
   }, [stopLoop]);
 
@@ -174,16 +210,18 @@ export function useHandTracker({
 
     try {
       setError(null);
-      setStatus("requesting");
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          facingMode: "user",
-          width: { ideal: 960 },
-          height: { ideal: 540 },
-          frameRate: { ideal: 60, min: 30 },
-        },
-      });
+      setStatus(streamRef.current ? "loading-model" : "requesting");
+      const stream =
+        streamRef.current ??
+        (await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: "user",
+            width: { ideal: 960 },
+            height: { ideal: 540 },
+            frameRate: { ideal: 60, min: 30 },
+          },
+        }));
       streamRef.current = stream;
       video.srcObject = stream;
       video.muted = true;
@@ -192,18 +230,17 @@ export function useHandTracker({
 
       if (!landmarkerRef.current) {
         setStatus("loading-model");
-        const fileset = await FilesetResolver.forVisionTasks(WASM_BASE);
-        landmarkerRef.current = await HandLandmarker.createFromOptions(fileset, {
-          baseOptions: {
-            delegate: "GPU",
-            modelAssetPath: MODEL_URL,
-          },
-          minHandDetectionConfidence: 0.48,
-          minHandPresenceConfidence: 0.48,
-          minTrackingConfidence: 0.48,
-          numHands: 1,
-          runningMode: "VIDEO",
-        });
+        try {
+          landmarkerRef.current = await createLandmarker();
+        } catch (modelError) {
+          setStatus("camera-only");
+          setError(
+            modelError instanceof Error
+              ? `Camera is on, but hand tracking could not load: ${modelError.message}`
+              : "Camera is on, but hand tracking could not load.",
+          );
+          return;
+        }
       }
 
       runningRef.current = true;
@@ -211,8 +248,10 @@ export function useHandTracker({
       animationRef.current = requestAnimationFrame(runDetection);
     } catch (startError) {
       stopLoop();
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
+      if (streamRef.current) {
+        streamRef.current?.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
       setStatus("fallback");
       setError(
         startError instanceof Error
@@ -220,7 +259,7 @@ export function useHandTracker({
           : "Camera permission was not granted.",
       );
     }
-  }, [runDetection, stopLoop]);
+  }, [createLandmarker, runDetection, stopLoop]);
 
   useEffect(() => stop, [stop]);
 

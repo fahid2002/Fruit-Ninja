@@ -6,6 +6,9 @@ export type FruitShape =
   | "lemon"
   | "lime"
   | "kiwi"
+  | "apple"
+  | "banana"
+  | "coconut"
   | "strawberry"
   | "pineapple";
 
@@ -40,6 +43,32 @@ export const FRUIT_SKINS: readonly FruitSkin[] = [
     accent: "#b7ef37",
     radiusMin: 46,
     radiusMax: 58,
+  },
+  {
+    name: "Apple",
+    shape: "apple",
+    peel: "#c41420",
+    peelDark: "#720913",
+    flesh: "#fff7c8",
+    fleshLight: "#fffde8",
+    seed: "#5d3516",
+    juice: "#d71924",
+    accent: "#6dbd30",
+    radiusMin: 38,
+    radiusMax: 50,
+  },
+  {
+    name: "Banana",
+    shape: "banana",
+    peel: "#ffd429",
+    peelDark: "#b77b08",
+    flesh: "#fff7cf",
+    fleshLight: "#fffde8",
+    seed: "#8d5b16",
+    juice: "#f4c917",
+    accent: "#6b3d13",
+    radiusMin: 38,
+    radiusMax: 48,
   },
   {
     name: "Orange",
@@ -92,6 +121,19 @@ export const FRUIT_SKINS: readonly FruitSkin[] = [
     accent: "#d9fb78",
     radiusMin: 34,
     radiusMax: 44,
+  },
+  {
+    name: "Coconut",
+    shape: "coconut",
+    peel: "#5a3516",
+    peelDark: "#251306",
+    flesh: "#ffffff",
+    fleshLight: "#f7f2dc",
+    seed: "#1e1208",
+    juice: "#fff4da",
+    accent: "#9b6a34",
+    radiusMin: 38,
+    radiusMax: 50,
   },
   {
     name: "Strawberry",
@@ -228,6 +270,91 @@ function drawKiwi(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: number
   drawGloss(ctx, radius);
 }
 
+function drawApple(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: number) {
+  const gradient = ctx.createRadialGradient(-radius * 0.35, -radius * 0.42, radius * 0.08, 0, 0, radius);
+  gradient.addColorStop(0, skin.fleshLight);
+  gradient.addColorStop(0.24, skin.peel);
+  gradient.addColorStop(0.72, skin.peel);
+  gradient.addColorStop(1, skin.peelDark);
+
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.moveTo(0, -radius * 0.88);
+  ctx.bezierCurveTo(-radius * 0.92, -radius * 1.02, -radius * 1.1, radius * 0.16, -radius * 0.42, radius * 0.9);
+  ctx.bezierCurveTo(-radius * 0.12, radius * 1.08, radius * 0.12, radius * 1.08, radius * 0.42, radius * 0.9);
+  ctx.bezierCurveTo(radius * 1.1, radius * 0.16, radius * 0.92, -radius * 1.02, 0, -radius * 0.88);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.28)";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.strokeStyle = "#56310f";
+  ctx.lineWidth = Math.max(4, radius * 0.12);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(radius * 0.04, -radius * 0.82);
+  ctx.quadraticCurveTo(radius * 0.12, -radius * 1.08, radius * 0.3, -radius * 1.2);
+  ctx.stroke();
+  drawLeaf(ctx, radius * 0.12, -radius * 1.08, radius * 0.25, -0.4, skin.accent);
+  drawGloss(ctx, radius);
+}
+
+function drawBanana(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: number) {
+  ctx.save();
+  ctx.rotate(-0.45);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  const gradient = ctx.createLinearGradient(-radius * 1.12, -radius * 0.24, radius * 1.15, radius * 0.22);
+  gradient.addColorStop(0, skin.peelDark);
+  gradient.addColorStop(0.16, skin.peel);
+  gradient.addColorStop(0.54, skin.fleshLight);
+  gradient.addColorStop(0.86, skin.peel);
+  gradient.addColorStop(1, skin.peelDark);
+
+  ctx.strokeStyle = gradient;
+  ctx.lineWidth = radius * 0.62;
+  ctx.beginPath();
+  ctx.moveTo(-radius * 1.16, radius * 0.18);
+  ctx.bezierCurveTo(-radius * 0.5, radius * 0.9, radius * 0.72, radius * 0.56, radius * 1.18, -radius * 0.32);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.3)";
+  ctx.lineWidth = radius * 0.14;
+  ctx.beginPath();
+  ctx.moveTo(-radius * 0.82, radius * 0.22);
+  ctx.bezierCurveTo(-radius * 0.26, radius * 0.54, radius * 0.62, radius * 0.22, radius * 0.94, -radius * 0.28);
+  ctx.stroke();
+
+  ctx.fillStyle = skin.accent;
+  ctx.beginPath();
+  ctx.arc(-radius * 1.17, radius * 0.2, radius * 0.12, 0, Math.PI * 2);
+  ctx.arc(radius * 1.2, -radius * 0.34, radius * 0.1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCoconut(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: number) {
+  drawRoundFruit(ctx, skin, radius);
+  ctx.strokeStyle = "rgba(37,19,6,0.42)";
+  ctx.lineWidth = 2.2;
+  for (let index = 0; index < 18; index += 1) {
+    const angle = (index / 18) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle) * radius * 0.18, Math.sin(angle) * radius * 0.18);
+    ctx.lineTo(Math.cos(angle + 0.3) * radius * 0.92, Math.sin(angle + 0.3) * radius * 0.92);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "rgba(0,0,0,0.42)";
+  for (let index = 0; index < 3; index += 1) {
+    const angle = -Math.PI / 2 + index * 0.45;
+    ctx.beginPath();
+    ctx.arc(Math.cos(angle) * radius * 0.28, Math.sin(angle) * radius * 0.28, radius * 0.07, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  drawGloss(ctx, radius);
+}
+
 function drawStrawberry(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: number) {
   const gradient = ctx.createRadialGradient(-radius * 0.35, -radius * 0.4, radius * 0.1, 0, 0, radius);
   gradient.addColorStop(0, skin.fleshLight);
@@ -307,6 +434,12 @@ export function drawFruit(
 
   if (skin.shape === "watermelon") {
     drawWatermelon(ctx, skin, radius);
+  } else if (skin.shape === "apple") {
+    drawApple(ctx, skin, radius);
+  } else if (skin.shape === "banana") {
+    drawBanana(ctx, skin, radius);
+  } else if (skin.shape === "coconut") {
+    drawCoconut(ctx, skin, radius);
   } else if (skin.shape === "orange" || skin.shape === "lemon" || skin.shape === "lime") {
     drawCitrus(ctx, skin, radius);
   } else if (skin.shape === "kiwi") {
@@ -338,7 +471,7 @@ export function drawFruitHalf(
     ctx.arc(0, 0, radius, -Math.PI / 2, Math.PI / 2);
   }
   ctx.closePath();
-  ctx.fillStyle = skin.flesh;
+  ctx.fillStyle = skin.shape === "coconut" ? skin.fleshLight : skin.flesh;
   ctx.fill();
 
   ctx.shadowBlur = 0;
@@ -353,7 +486,20 @@ export function drawFruitHalf(
   ctx.lineTo(0, radius * 0.88);
   ctx.stroke();
 
-  if (skin.shape === "watermelon" || skin.shape === "kiwi" || skin.shape === "strawberry") {
+  if (skin.shape === "banana") {
+    ctx.fillStyle = skin.flesh;
+    ctx.beginPath();
+    ctx.ellipse(side * radius * 0.24, 0, radius * 0.34, radius * 0.82, 0.12 * side, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = skin.peel;
+    ctx.lineWidth = Math.max(4, radius * 0.1);
+    ctx.stroke();
+  } else if (skin.shape === "coconut") {
+    ctx.fillStyle = "#2a1709";
+    ctx.beginPath();
+    ctx.arc(side * radius * 0.24, 0, radius * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (skin.shape === "watermelon" || skin.shape === "kiwi" || skin.shape === "strawberry" || skin.shape === "apple") {
     ctx.fillStyle = skin.seed;
     for (let index = 0; index < 7; index += 1) {
       const y = -radius * 0.5 + index * radius * 0.17;
