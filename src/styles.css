@@ -1,0 +1,339 @@
+:root {
+  color: #fffdf6;
+  background: #080708;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+}
+
+.gameShell {
+  position: relative;
+  width: 100vw;
+  height: 100svh;
+  min-height: 520px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 115%, rgba(255, 150, 34, 0.34), transparent 31%),
+    linear-gradient(180deg, #141111 0%, #070707 100%);
+  isolation: isolate;
+}
+
+.cameraFeed,
+.cameraShade,
+.gameCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cameraFeed {
+  object-fit: cover;
+  transform: scaleX(-1);
+  opacity: 0.88;
+  filter: saturate(1.05) contrast(1.04);
+  z-index: 0;
+}
+
+.cameraShade {
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.42) 0%, transparent 26%, transparent 62%, rgba(0, 0, 0, 0.34) 100%),
+    radial-gradient(circle at center, transparent 36%, rgba(0, 0, 0, 0.38) 100%);
+}
+
+.gameCanvas {
+  z-index: 2;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.hud {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  left: max(18px, env(safe-area-inset-left));
+  right: max(18px, env(safe-area-inset-right));
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(88px, auto) 1fr minmax(116px, auto);
+  align-items: start;
+  gap: 14px;
+  pointer-events: none;
+}
+
+.scoreBadge,
+.lifeBadge,
+.cameraBadge {
+  min-height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(10, 10, 10, 0.54);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(14px);
+}
+
+.scoreBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 104px;
+  gap: 9px;
+  padding: 8px 16px;
+  color: #fbff9a;
+}
+
+.scoreBadge span {
+  min-width: 34px;
+  font-size: clamp(1.6rem, 4vh, 2.35rem);
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.cameraBadge {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: min(280px, 100%);
+  padding: 0 14px;
+  color: #e9fff9;
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cameraBadge[data-status="tracking"] {
+  color: #9cffd5;
+  border-color: rgba(92, 255, 178, 0.34);
+}
+
+.cameraBadge[data-status="fallback"] {
+  color: #ffd38a;
+  border-color: rgba(255, 190, 88, 0.38);
+}
+
+.lifeBadge {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.lifeIcon {
+  flex: 0 0 auto;
+  transition: color 160ms ease, transform 160ms ease, opacity 160ms ease;
+}
+
+.lifeIcon.isActive {
+  color: #fb4969;
+  filter: drop-shadow(0 0 10px rgba(251, 73, 105, 0.5));
+}
+
+.startOverlay,
+.gameOverPanel {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  width: min(92vw, 430px);
+  transform: translate(-50%, -50%);
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(11, 10, 10, 0.74);
+  box-shadow: 0 26px 90px rgba(0, 0, 0, 0.5);
+  padding: 28px;
+  text-align: center;
+  backdrop-filter: blur(18px);
+}
+
+.brandLockup {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.brandMark {
+  display: inline-grid;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    linear-gradient(145deg, #ff315d 0%, #ff8c1a 45%, #fff155 100%);
+  color: #260907;
+  font-size: 1.35rem;
+  font-weight: 950;
+  box-shadow: 0 18px 46px rgba(255, 85, 31, 0.34);
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2.15rem, 7vw, 4.2rem);
+  line-height: 0.95;
+  font-weight: 950;
+}
+
+.primaryButton {
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffe95b, #ff8a1c 46%, #fa315f 100%);
+  color: #1d0906;
+  box-shadow: 0 16px 34px rgba(249, 115, 22, 0.32);
+  padding: 0 22px;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.primaryButton:hover {
+  transform: translateY(-1px);
+}
+
+.primaryButton:active {
+  transform: translateY(1px);
+}
+
+.inlineStatus,
+.toast {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #ffd38a;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.gameOverPanel {
+  width: min(92vw, 380px);
+}
+
+.overline {
+  color: #ff8a1c;
+  font-size: 0.88rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.gameOverPanel h2 {
+  color: #fff155;
+  font-size: clamp(4.8rem, 19vw, 7.4rem);
+  font-weight: 950;
+  line-height: 0.82;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.scoreLabel {
+  color: #fff7dc;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 7;
+  width: min(92vw, 520px);
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 211, 138, 0.3);
+  border-radius: 8px;
+  background: rgba(16, 12, 8, 0.74);
+  padding: 12px 14px;
+  backdrop-filter: blur(16px);
+}
+
+@media (max-width: 720px) {
+  .gameShell {
+    min-height: 560px;
+  }
+
+  .hud {
+    top: max(12px, env(safe-area-inset-top));
+    left: 12px;
+    right: 12px;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+  }
+
+  .cameraBadge {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: center;
+    min-height: 36px;
+    font-size: 0.78rem;
+  }
+
+  .scoreBadge,
+  .lifeBadge {
+    min-height: 44px;
+  }
+
+  .scoreBadge {
+    min-width: 88px;
+    padding-inline: 12px;
+  }
+
+  .scoreBadge span {
+    font-size: 1.75rem;
+  }
+
+  .lifeBadge {
+    padding-inline: 10px;
+    gap: 6px;
+  }
+
+  .startOverlay,
+  .gameOverPanel {
+    padding: 24px 18px;
+  }
+}
