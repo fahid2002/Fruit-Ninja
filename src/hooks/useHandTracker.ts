@@ -66,6 +66,48 @@ function getPrimaryFinger(result: HandLandmarkerResult) {
   return landmarks[8] ?? null;
 }
 
+function isInterruptedPlayError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("interrupted by a new load request") ||
+    (error instanceof DOMException && error.name === "AbortError")
+  );
+}
+
+function waitForVideoMetadata(video: HTMLVideoElement) {
+  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+    return Promise.resolve();
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      resolve();
+    }, 2500);
+
+    const cleanup = () => {
+      window.clearTimeout(timeout);
+      video.removeEventListener("loadedmetadata", handleReady);
+      video.removeEventListener("loadeddata", handleReady);
+      video.removeEventListener("error", handleError);
+    };
+
+    const handleReady = () => {
+      cleanup();
+      resolve();
+    };
+
+    const handleError = () => {
+      cleanup();
+      reject(video.error ?? new Error("Camera video could not start."));
+    };
+
+    video.addEventListener("loadedmetadata", handleReady);
+    video.addEventListener("loadeddata", handleReady);
+    video.addEventListener("error", handleError);
+  });
+}
+
 export function useHandTracker({
   onPoint,
 }: UseHandTrackerOptions): UseHandTrackerResult {
@@ -77,6 +119,8 @@ export function useHandTracker({
   const runningRef = useRef(false);
   const lastVideoTimeRef = useRef(-1);
   const lastPointRef = useRef<HandPoint | null>(null);
+  const requestIdRef = useRef(0);
+  const startPromiseRef = useRef<Promise<void> | null>(null);
   const [status, setStatus] = useState<CameraStatus>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -126,6 +170,8 @@ export function useHandTracker({
   }, []);
 
   const stop = useCallback(() => {
+    requestIdRef.current += 1;
+    startPromiseRef.current = null;
     stopLoop();
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
@@ -196,69 +242,135 @@ export function useHandTracker({
     animationRef.current = requestAnimationFrame(runDetection);
   }, []);
 
-  const start = useCallback(async () => {
+  const start = useCallback(() => {
     if (runningRef.current) {
-      return;
+      return Promise.resolve();
+    }
+
+    if (startPromiseRef.current) {
+      return startPromiseRef.current;
     }
 
     const video = videoRef.current;
     if (!video || !navigator.mediaDevices?.getUserMedia) {
       setStatus("fallback");
       setError("Camera is not available in this browser.");
-      return;
+      return Promise.resolve();
     }
 
-    try {
-      setError(null);
-      setStatus(streamRef.current ? "loading-model" : "requesting");
-      const stream =
-        streamRef.current ??
-        (await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: {
-            facingMode: "user",
-            width: { ideal: 960 },
-            height: { ideal: 540 },
-            frameRate: { ideal: 60, min: 30 },
-          },
-        }));
-      streamRef.current = stream;
-      video.srcObject = stream;
-      video.muted = true;
-      video.playsInline = true;
-      await video.play();
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
 
-      if (!landmarkerRef.current) {
-        setStatus("loading-model");
-        try {
-          landmarkerRef.current = await createLandmarker();
-        } catch (modelError) {
-          setStatus("camera-only");
-          setError(
-            modelError instanceof Error
-              ? `Camera is on, but hand tracking could not load: ${modelError.message}`
-              : "Camera is on, but hand tracking could not load.",
-          );
+    const startPromise = (async () => {
+      try {
+        setError(null);
+        setStatus(streamRef.current ? "loading-model" : "requesting");
+        const existingStream = streamRef.current;
+        const stream =
+          existingStream ??
+          (await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+              facingMode: "user",
+              width: { ideal: 960 },
+              height: { ideal: 540 },
+              frameRate: { ideal: 60, min: 30 },
+            },
+          }));
+
+        if (requestIdRef.current !== requestId) {
+          if (!existingStream) {
+            stream.getTracks().forEach((track) => track.stop());
+          }
           return;
         }
-      }
 
-      runningRef.current = true;
-      setStatus("tracking");
-      animationRef.current = requestAnimationFrame(runDetection);
-    } catch (startError) {
-      stopLoop();
-      if (streamRef.current) {
-        streamRef.current?.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
+        streamRef.current = stream;
+        if (video.srcObject !== stream) {
+          video.srcObject = stream;
+        }
+        video.muted = true;
+        video.playsInline = true;
+        video.autoplay = true;
+        await waitForVideoMetadata(video);
+
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
+
+        try {
+          await video.play();
+        } catch (playError) {
+          if (!isInterruptedPlayError(playError)) {
+            throw playError;
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 90));
+          if (requestIdRef.current !== requestId) {
+            return;
+          }
+          try {
+            await video.play();
+          } catch (retryError) {
+            if (!isInterruptedPlayError(retryError)) {
+              throw retryError;
+            }
+            return;
+          }
+        }
+
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
+
+        if (!landmarkerRef.current) {
+          setStatus("loading-model");
+          try {
+            landmarkerRef.current = await createLandmarker();
+          } catch (modelError) {
+            if (requestIdRef.current !== requestId) {
+              return;
+            }
+            setStatus("camera-only");
+            setError(
+              modelError instanceof Error
+                ? `Camera is on, but hand tracking could not load: ${modelError.message}`
+                : "Camera is on, but hand tracking could not load.",
+            );
+            return;
+          }
+        }
+
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
+
+        runningRef.current = true;
+        setStatus("tracking");
+        animationRef.current = requestAnimationFrame(runDetection);
+      } catch (startError) {
+        stopLoop();
+        if (streamRef.current) {
+          streamRef.current?.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+        if (requestIdRef.current !== requestId || isInterruptedPlayError(startError)) {
+          return;
+        }
+        setStatus("fallback");
+        setError(
+          startError instanceof Error
+            ? startError.message
+            : "Camera permission was not granted.",
+        );
+      } finally {
+        if (requestIdRef.current === requestId) {
+          startPromiseRef.current = null;
+        }
       }
-      setStatus("fallback");
-      setError(
-        startError instanceof Error
-          ? startError.message
-          : "Camera permission was not granted.",
-      );
-    }
+    })();
+
+    startPromiseRef.current = startPromise;
+    return startPromise;
   }, [createLandmarker, runDetection, stopLoop]);
 
   useEffect(() => stop, [stop]);

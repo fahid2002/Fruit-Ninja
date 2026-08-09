@@ -132,7 +132,7 @@ export class FruitArcade {
     this.ctx = context;
     this.callbacks = callbacks;
     this.engine.gravity.y = 1;
-    this.engine.gravity.scale = 0.00108;
+    this.engine.gravity.scale = 0.00124;
     this.resize();
     this.bindEvents();
   }
@@ -218,11 +218,12 @@ export class FruitArcade {
   };
 
   private tick = (time: number) => {
-    const delta = Math.min(time - this.lastTick, 32);
+    const delta = Math.min(time - this.lastTick, 16.66);
     this.lastTick = time;
 
     this.spawnIfNeeded(time);
     Engine.update(this.engine, delta);
+    this.keepObjectsInView();
     this.removeExpiredObjects(time);
     this.updateEffects(delta);
     this.draw(time);
@@ -282,7 +283,7 @@ export class FruitArcade {
     const mirroredIndex = Math.random() < 0.5 ? index : waveSize - index - 1;
     const laneX = laneWidth * (mirroredIndex + 1);
     const startX = clamp(laneX + randomBetween(-laneWidth * 0.1, laneWidth * 0.1), radius, this.width - radius);
-    const startY = this.height + radius + randomBetween(22, 92);
+    const startY = this.height + radius + randomBetween(12, 54);
     const body = Bodies.circle(startX, startY, radius, {
       collisionFilter: {
         category: NO_COLLISION_CATEGORY,
@@ -296,8 +297,8 @@ export class FruitArcade {
 
     const level = Math.floor(this.score / 10);
     const highArc = kind === "fruit" && Math.random() < Math.min(0.72, 0.44 + level * 0.035);
-    const launchAngle = (randomBetween(highArc ? 76 : 65, highArc ? 104 : 115) * Math.PI) / 180;
-    const speed = randomBetween(highArc ? 27 : 21, highArc ? 36 : 30) * clamp(this.height / 760, 0.92, 1.18);
+    const launchAngle = (randomBetween(highArc ? 78 : 67, highArc ? 102 : 113) * Math.PI) / 180;
+    const speed = randomBetween(highArc ? 17.2 : 14.2, highArc ? 20.9 : 17.8) * clamp(this.height / 760, 0.88, 1.06);
     const horizontalDirection = startX < this.width * 0.5 ? 1 : -1;
     Body.setVelocity(body, {
       x: Math.cos(launchAngle) * speed * horizontalDirection + randomBetween(-1.2, 1.2),
@@ -315,6 +316,20 @@ export class FruitArcade {
       bornAt: performance.now(),
     });
     this.objectId += 1;
+  }
+
+  private keepObjectsInView() {
+    for (const object of this.objects) {
+      const { x, y } = object.body.position;
+      const minimumY = object.radius * 1.04;
+      if (y < minimumY && object.body.velocity.y < 0) {
+        Body.setPosition(object.body, { x, y: minimumY });
+        Body.setVelocity(object.body, {
+          x: object.body.velocity.x,
+          y: Math.abs(object.body.velocity.y) * 0.34 + 0.7,
+        });
+      }
+    }
   }
 
   private removeExpiredObjects(time: number) {

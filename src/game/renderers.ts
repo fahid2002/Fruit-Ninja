@@ -301,37 +301,70 @@ function drawApple(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: numbe
 
 function drawBanana(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: number) {
   ctx.save();
-  ctx.rotate(-0.45);
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
+  ctx.rotate(-0.55);
+  ctx.scale(1.08, 0.94);
 
-  const gradient = ctx.createLinearGradient(-radius * 1.12, -radius * 0.24, radius * 1.15, radius * 0.22);
-  gradient.addColorStop(0, skin.peelDark);
-  gradient.addColorStop(0.16, skin.peel);
-  gradient.addColorStop(0.54, skin.fleshLight);
-  gradient.addColorStop(0.86, skin.peel);
-  gradient.addColorStop(1, skin.peelDark);
+  const gradient = ctx.createLinearGradient(-radius * 1.14, -radius * 0.22, radius * 1.18, radius * 0.2);
+  gradient.addColorStop(0, "#8f5407");
+  gradient.addColorStop(0.12, skin.peelDark);
+  gradient.addColorStop(0.25, skin.peel);
+  gradient.addColorStop(0.55, skin.fleshLight);
+  gradient.addColorStop(0.8, "#f6c319");
+  gradient.addColorStop(1, "#7a4206");
 
-  ctx.strokeStyle = gradient;
-  ctx.lineWidth = radius * 0.62;
+  ctx.fillStyle = gradient;
   ctx.beginPath();
-  ctx.moveTo(-radius * 1.16, radius * 0.18);
-  ctx.bezierCurveTo(-radius * 0.5, radius * 0.9, radius * 0.72, radius * 0.56, radius * 1.18, -radius * 0.32);
-  ctx.stroke();
-
-  ctx.strokeStyle = "rgba(255,255,255,0.3)";
-  ctx.lineWidth = radius * 0.14;
-  ctx.beginPath();
-  ctx.moveTo(-radius * 0.82, radius * 0.22);
-  ctx.bezierCurveTo(-radius * 0.26, radius * 0.54, radius * 0.62, radius * 0.22, radius * 0.94, -radius * 0.28);
-  ctx.stroke();
-
-  ctx.fillStyle = skin.accent;
-  ctx.beginPath();
-  ctx.arc(-radius * 1.17, radius * 0.2, radius * 0.12, 0, Math.PI * 2);
-  ctx.arc(radius * 1.2, -radius * 0.34, radius * 0.1, 0, Math.PI * 2);
+  ctx.moveTo(-radius * 1.12, radius * 0.12);
+  ctx.bezierCurveTo(-radius * 0.66, radius * 0.78, radius * 0.52, radius * 0.8, radius * 1.16, -radius * 0.22);
+  ctx.bezierCurveTo(radius * 0.78, -radius * 0.05, radius * 0.08, radius * 0.08, -radius * 0.78, -radius * 0.04);
+  ctx.bezierCurveTo(-radius * 1, -radius * 0.08, -radius * 1.22, 0, -radius * 1.12, radius * 0.12);
+  ctx.closePath();
   ctx.fill();
+  ctx.strokeStyle = "rgba(96,55,6,0.72)";
+  ctx.lineWidth = Math.max(2.5, radius * 0.07);
+  ctx.stroke();
+
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(120,71,5,0.42)";
+  ctx.lineWidth = Math.max(2, radius * 0.055);
+  ctx.beginPath();
+  ctx.moveTo(-radius * 0.82, radius * 0.16);
+  ctx.bezierCurveTo(-radius * 0.22, radius * 0.38, radius * 0.62, radius * 0.2, radius * 0.94, -radius * 0.19);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.38)";
+  ctx.lineWidth = Math.max(2, radius * 0.048);
+  ctx.beginPath();
+  ctx.moveTo(-radius * 0.68, radius * 0.02);
+  ctx.bezierCurveTo(-radius * 0.18, radius * 0.16, radius * 0.52, radius * 0.05, radius * 0.8, -radius * 0.17);
+  ctx.stroke();
+
+  ctx.fillStyle = "#5b3208";
+  ctx.beginPath();
+  ctx.ellipse(-radius * 1.09, radius * 0.1, radius * 0.12, radius * 0.08, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(radius * 1.11, -radius * 0.22, radius * 0.1, radius * 0.075, -0.45, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(120,68,5,0.24)";
+  for (let index = 0; index < 6; index += 1) {
+    ctx.beginPath();
+    ctx.arc(randomSpeck(index, radius, "x"), randomSpeck(index, radius, "y"), radius * 0.018, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
+}
+
+function randomSpeck(index: number, radius: number, axis: "x" | "y") {
+  const values = [
+    [-0.46, 0.04],
+    [-0.24, 0.18],
+    [0.02, 0.08],
+    [0.26, 0.14],
+    [0.48, -0.02],
+    [0.64, -0.12],
+  ];
+  const value = values[index % values.length]!;
+  return radius * (axis === "x" ? value[0] : value[1]);
 }
 
 function drawCoconut(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: number) {
@@ -400,18 +433,37 @@ function drawPineapple(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: n
   ctx.beginPath();
   ctx.ellipse(0, radius * 0.08, radius * 0.78, radius * 0.9, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = "rgba(255,244,178,0.32)";
+  ctx.lineWidth = 2.2;
+  ctx.stroke();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(0, radius * 0.08, radius * 0.78, radius * 0.9, 0, 0, Math.PI * 2);
+  ctx.clip();
   ctx.strokeStyle = "rgba(95,56,8,0.45)";
-  ctx.lineWidth = 2.4;
-  for (let offset = -3; offset <= 3; offset += 1) {
+  ctx.lineWidth = 2.1;
+  for (let offset = -4; offset <= 4; offset += 1) {
     ctx.beginPath();
-    ctx.moveTo(-radius, offset * radius * 0.24);
-    ctx.lineTo(radius, offset * radius * 0.24 + radius * 0.8);
+    ctx.moveTo(-radius * 0.9, offset * radius * 0.22 - radius * 0.2);
+    ctx.lineTo(radius * 0.9, offset * radius * 0.22 + radius * 0.68);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(-radius, offset * radius * 0.24 + radius * 0.8);
-    ctx.lineTo(radius, offset * radius * 0.24);
+    ctx.moveTo(-radius * 0.9, offset * radius * 0.22 + radius * 0.68);
+    ctx.lineTo(radius * 0.9, offset * radius * 0.22 - radius * 0.2);
     ctx.stroke();
   }
+  ctx.fillStyle = "rgba(255,238,111,0.35)";
+  for (let row = -2; row <= 3; row += 1) {
+    for (let col = -2; col <= 2; col += 1) {
+      const x = col * radius * 0.25 + (row % 2) * radius * 0.11;
+      const y = row * radius * 0.24 + radius * 0.08;
+      ctx.beginPath();
+      ctx.ellipse(x, y, radius * 0.045, radius * 0.032, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
   ctx.restore();
 
   for (let index = -2; index <= 2; index += 1) {

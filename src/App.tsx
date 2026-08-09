@@ -36,7 +36,12 @@ function App() {
   const handTracker = useHandTracker({
     onPoint: handleHandPoint,
   });
-  const cameraActive = handTracker.status !== "idle";
+  const cameraActive = handTracker.status !== "idle" && handTracker.status !== "fallback";
+  const cameraVisible =
+    handTracker.status === "requesting" ||
+    handTracker.status === "loading-model" ||
+    handTracker.status === "tracking" ||
+    handTracker.status === "camera-only";
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -73,10 +78,10 @@ function App() {
     setGameOver(false);
     setFinalScore(0);
     gameRef.current?.startRound();
-    if (handTracker.status !== "tracking") {
+    if (!cameraActive) {
       void handTracker.start();
     }
-  }, [handTracker]);
+  }, [cameraActive, handTracker]);
 
   const toggleCamera = useCallback(async () => {
     if (cameraActive) {
@@ -88,7 +93,7 @@ function App() {
   }, [cameraActive, handTracker]);
 
   return (
-    <main className="gameShell">
+    <main className="gameShell" data-camera={cameraVisible ? "on" : "off"}>
       <video ref={handTracker.videoRef} className="cameraFeed" aria-hidden="true" />
       <div className="dojoBackdrop" />
       <div className="cameraShade" />
