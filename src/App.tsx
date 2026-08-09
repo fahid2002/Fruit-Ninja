@@ -10,7 +10,7 @@ function cameraLabel(status: ReturnType<typeof useHandTracker>["status"]) {
     case "loading-model":
       return "Loading tracker";
     case "tracking":
-      return "Hand tracking live";
+      return "Camera live";
     case "fallback":
       return "Pointer fallback";
     default:
@@ -80,6 +80,7 @@ function App() {
   return (
     <main className="gameShell">
       <video ref={handTracker.videoRef} className="cameraFeed" aria-hidden="true" />
+      <div className="dojoBackdrop" />
       <div className="cameraShade" />
       <canvas ref={canvasRef} className="gameCanvas" />
 
@@ -110,8 +111,11 @@ function App() {
       {!started && (
         <section className="startOverlay" aria-label="Start game">
           <div className="brandLockup">
-            <span className="brandMark">FS</span>
-            <h1>Fruit Slice Cam</h1>
+            <span className="brandMark">FN</span>
+            <h1>
+              <span className="wordFruit">Fruit </span>
+              <span className="wordNinja">ninja</span>
+            </h1>
           </div>
           <button className="primaryButton" type="button" onClick={() => void startGame()}>
             <Play size={22} fill="currentColor" />

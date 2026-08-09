@@ -1,4 +1,4 @@
-# Fruit Slice Cam
+# Fruit ninja
 
 A browser-based fruit slicing game controlled by a laptop camera and fingertip tracking.
 

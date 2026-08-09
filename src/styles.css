@@ -1,7 +1,8 @@
 :root {
-  color: #fffdf6;
-  background: #080708;
+  color: #fff7dc;
+  background: #120906;
   font-family:
+    Trebuchet MS,
     Inter,
     ui-sans-serif,
     system-ui,
@@ -37,16 +38,17 @@ button {
 .gameShell {
   position: relative;
   width: 100vw;
-  height: 100svh;
-  min-height: 520px;
+  height: 100dvh;
+  min-height: 100svh;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 115%, rgba(255, 150, 34, 0.34), transparent 31%),
-    linear-gradient(180deg, #141111 0%, #070707 100%);
+    radial-gradient(circle at 50% 115%, rgba(255, 162, 35, 0.36), transparent 34%),
+    linear-gradient(180deg, #221008 0%, #0a0604 100%);
   isolation: isolate;
 }
 
 .cameraFeed,
+.dojoBackdrop,
 .cameraShade,
 .gameCanvas {
   position: absolute;
@@ -57,34 +59,55 @@ button {
 
 .cameraFeed {
   object-fit: cover;
-  transform: scaleX(-1);
-  opacity: 0.88;
-  filter: saturate(1.05) contrast(1.04);
+  opacity: 0.62;
+  filter: saturate(1.08) contrast(1.04);
   z-index: 0;
 }
 
-.cameraShade {
+.dojoBackdrop {
   z-index: 1;
   pointer-events: none;
+  opacity: 0.74;
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.42) 0%, transparent 26%, transparent 62%, rgba(0, 0, 0, 0.34) 100%),
-    radial-gradient(circle at center, transparent 36%, rgba(0, 0, 0, 0.38) 100%);
+    radial-gradient(circle at 30% 20%, rgba(255, 178, 77, 0.2), transparent 19%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 24.5%),
+    repeating-linear-gradient(90deg, rgba(89, 39, 15, 0.86) 0 10px, rgba(125, 65, 27, 0.82) 10px 24px, rgba(73, 30, 12, 0.86) 24px 36px),
+    repeating-linear-gradient(0deg, rgba(255, 205, 122, 0.08) 0 3px, transparent 3px 17px);
+  background-blend-mode: screen, multiply, normal, overlay;
+}
+
+.dojoBackdrop::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    linear-gradient(104deg, transparent 0 42%, rgba(0, 0, 0, 0.22) 42.2% 42.8%, transparent 43% 100%),
+    linear-gradient(24deg, transparent 0 55%, rgba(255, 214, 147, 0.08) 55.2% 55.6%, transparent 56% 100%),
+    radial-gradient(circle at center, transparent 38%, rgba(0, 0, 0, 0.36) 100%);
+}
+
+.cameraShade {
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0%, transparent 24%, transparent 68%, rgba(0, 0, 0, 0.36) 100%),
+    radial-gradient(circle at center, transparent 42%, rgba(0, 0, 0, 0.42) 100%);
 }
 
 .gameCanvas {
-  z-index: 2;
+  z-index: 3;
   touch-action: none;
   cursor: crosshair;
 }
 
 .hud {
   position: absolute;
-  top: max(18px, env(safe-area-inset-top));
-  left: max(18px, env(safe-area-inset-left));
-  right: max(18px, env(safe-area-inset-right));
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
   z-index: 5;
   display: grid;
-  grid-template-columns: minmax(88px, auto) 1fr minmax(116px, auto);
+  grid-template-columns: minmax(92px, auto) 1fr minmax(118px, auto);
   align-items: start;
   gap: 14px;
   pointer-events: none;
@@ -94,11 +117,14 @@ button {
 .lifeBadge,
 .cameraBadge {
   min-height: 48px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 2px solid rgba(245, 207, 119, 0.28);
   border-radius: 8px;
-  background: rgba(10, 10, 10, 0.54);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(14px);
+  background:
+    linear-gradient(180deg, rgba(56, 24, 10, 0.78), rgba(17, 9, 6, 0.72));
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 231, 168, 0.24);
+  backdrop-filter: blur(10px);
 }
 
 .scoreBadge {
@@ -108,14 +134,15 @@ button {
   width: fit-content;
   min-width: 104px;
   gap: 9px;
-  padding: 8px 16px;
-  color: #fbff9a;
+  padding: 7px 16px;
+  color: #ffe54a;
+  text-shadow: 0 3px 0 #5b2408, 0 0 15px rgba(255, 191, 41, 0.42);
 }
 
 .scoreBadge span {
   min-width: 34px;
-  font-size: clamp(1.6rem, 4vh, 2.35rem);
-  font-weight: 900;
+  font-size: 2.2rem;
+  font-weight: 950;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -128,15 +155,15 @@ button {
   gap: 8px;
   max-width: min(280px, 100%);
   padding: 0 14px;
-  color: #e9fff9;
+  color: #fff4d0;
   font-size: 0.88rem;
-  font-weight: 700;
+  font-weight: 850;
   white-space: nowrap;
 }
 
 .cameraBadge[data-status="tracking"] {
-  color: #9cffd5;
-  border-color: rgba(92, 255, 178, 0.34);
+  color: #b9ff91;
+  border-color: rgba(159, 255, 96, 0.38);
 }
 
 .cameraBadge[data-status="fallback"] {
@@ -159,8 +186,8 @@ button {
 }
 
 .lifeIcon.isActive {
-  color: #fb4969;
-  filter: drop-shadow(0 0 10px rgba(251, 73, 105, 0.5));
+  color: #ff304f;
+  filter: drop-shadow(0 0 10px rgba(255, 48, 79, 0.62));
 }
 
 .startOverlay,
@@ -170,18 +197,21 @@ button {
   left: 50%;
   top: 50%;
   display: flex;
-  width: min(92vw, 430px);
+  width: min(92vw, 440px);
   transform: translate(-50%, -50%);
   flex-direction: column;
   align-items: center;
   gap: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 2px solid rgba(246, 210, 136, 0.24);
   border-radius: 8px;
-  background: rgba(11, 10, 10, 0.74);
-  box-shadow: 0 26px 90px rgba(0, 0, 0, 0.5);
+  background:
+    linear-gradient(180deg, rgba(67, 31, 13, 0.78), rgba(16, 9, 6, 0.78));
+  box-shadow:
+    0 26px 90px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 244, 210, 0.13);
   padding: 28px;
   text-align: center;
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(14px);
 }
 
 .brandLockup {
@@ -197,8 +227,9 @@ button {
   place-items: center;
   border-radius: 50%;
   background:
-    linear-gradient(145deg, #ff315d 0%, #ff8c1a 45%, #fff155 100%);
-  color: #260907;
+    radial-gradient(circle at 34% 26%, #fff58a 0 18%, transparent 19%),
+    linear-gradient(145deg, #ec2037 0%, #ff8a1c 43%, #79c832 100%);
+  color: #2a0d05;
   font-size: 1.35rem;
   font-weight: 950;
   box-shadow: 0 18px 46px rgba(255, 85, 31, 0.34);
@@ -211,9 +242,27 @@ p {
 }
 
 h1 {
-  font-size: clamp(2.15rem, 7vw, 4.2rem);
-  line-height: 0.95;
+  display: grid;
+  justify-items: center;
+  line-height: 0.86;
+  font-size: 3.9rem;
   font-weight: 950;
+  text-transform: uppercase;
+}
+
+.wordFruit {
+  background: linear-gradient(90deg, #a74bff, #f23838 32%, #ffd451 66%, #62d141);
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(54, 18, 9, 0.76);
+  filter: drop-shadow(0 6px 0 rgba(57, 22, 8, 0.86));
+}
+
+.wordNinja {
+  margin-top: 0.18em;
+  color: #f9fbff;
+  -webkit-text-stroke: 2px #243142;
+  filter: drop-shadow(0 6px 0 rgba(5, 7, 12, 0.9));
 }
 
 .primaryButton {
@@ -222,14 +271,14 @@ h1 {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  border: 0;
+  border: 2px solid rgba(255, 252, 174, 0.42);
   border-radius: 8px;
-  background: linear-gradient(135deg, #ffe95b, #ff8a1c 46%, #fa315f 100%);
-  color: #1d0906;
-  box-shadow: 0 16px 34px rgba(249, 115, 22, 0.32);
+  background: linear-gradient(180deg, #fff06a 0%, #ffab26 46%, #f13f39 100%);
+  color: #260c05;
+  box-shadow: 0 16px 34px rgba(249, 115, 22, 0.38), inset 0 2px 0 rgba(255, 255, 255, 0.34);
   padding: 0 22px;
   font-size: 1rem;
-  font-weight: 900;
+  font-weight: 950;
   cursor: pointer;
 }
 
@@ -257,25 +306,25 @@ h1 {
 }
 
 .overline {
-  color: #ff8a1c;
+  color: #ffb12a;
   font-size: 0.88rem;
-  font-weight: 900;
+  font-weight: 950;
   text-transform: uppercase;
 }
 
 .gameOverPanel h2 {
   color: #fff155;
-  font-size: clamp(4.8rem, 19vw, 7.4rem);
+  font-size: 6.4rem;
   font-weight: 950;
   line-height: 0.82;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 5px 0 #6b2607, 0 12px 30px rgba(0, 0, 0, 0.45);
 }
 
 .scoreLabel {
   color: #fff7dc;
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 850;
 }
 
 .toast {
@@ -287,16 +336,12 @@ h1 {
   transform: translateX(-50%);
   border: 1px solid rgba(255, 211, 138, 0.3);
   border-radius: 8px;
-  background: rgba(16, 12, 8, 0.74);
+  background: rgba(16, 12, 8, 0.78);
   padding: 12px 14px;
   backdrop-filter: blur(16px);
 }
 
 @media (max-width: 720px) {
-  .gameShell {
-    min-height: 560px;
-  }
-
   .hud {
     top: max(12px, env(safe-area-inset-top));
     left: 12px;
@@ -335,5 +380,29 @@ h1 {
   .startOverlay,
   .gameOverPanel {
     padding: 24px 18px;
+  }
+
+  h1 {
+    font-size: 3.1rem;
+  }
+
+  .gameOverPanel h2 {
+    font-size: 5.2rem;
+  }
+}
+
+@media (max-width: 420px) {
+  h1 {
+    font-size: 2.5rem;
+  }
+
+  .startOverlay,
+  .gameOverPanel {
+    width: calc(100vw - 28px);
+  }
+
+  .brandMark {
+    width: 58px;
+    height: 58px;
   }
 }

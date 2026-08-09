@@ -12,6 +12,7 @@ import {
 } from "./renderers";
 
 const { Body, Bodies, Composite, Engine } = Matter;
+const NO_COLLISION_CATEGORY = 0x0002;
 
 type GameKind = "fruit" | "bomb";
 
@@ -50,6 +51,40 @@ type FruitHalf = Point & {
   maxLife: number;
 };
 
+type SplatBlobPoint = {
+  angle: number;
+  radius: number;
+};
+
+type SplatDrop = {
+  x: number;
+  y: number;
+  rx: number;
+  ry: number;
+  angle: number;
+  accent: boolean;
+};
+
+type SplatStreak = {
+  x: number;
+  y: number;
+  length: number;
+  width: number;
+  angle: number;
+};
+
+type JuiceSplat = Point & {
+  color: string;
+  accent: string;
+  angle: number;
+  scale: number;
+  life: number;
+  maxLife: number;
+  blob: SplatBlobPoint[];
+  drops: SplatDrop[];
+  streaks: SplatStreak[];
+};
+
 type ArcadeCallbacks = {
   onScoreChange: (score: number) => void;
   onLivesChange: (lives: number) => void;
@@ -64,6 +99,7 @@ export class FruitArcade {
   private objects: GameObject[] = [];
   private particles: Particle[] = [];
   private halves: FruitHalf[] = [];
+  private splats: JuiceSplat[] = [];
   private trail: TrailPoint[] = [];
   private width = 1;
   private height = 1;
@@ -80,14 +116,14 @@ export class FruitArcade {
 
   constructor(canvas: HTMLCanvasElement, callbacks: ArcadeCallbacks) {
     this.canvas = canvas;
-    const context = canvas.getContext("2d");
+    const context = canvas.getContext("2d", { alpha: true });
     if (!context) {
       throw new Error("Canvas rendering is not supported.");
     }
     this.ctx = context;
     this.callbacks = callbacks;
     this.engine.gravity.y = 1;
-    this.engine.gravity.scale = 0.00145;
+    this.engine.gravity.scale = 0.00155;
     this.resize();
     this.bindEvents();
   }
@@ -99,7 +135,7 @@ export class FruitArcade {
 
     this.lastTick = performance.now();
     this.startedAt = this.lastTick;
-    this.nextSpawnAt = this.lastTick + 450;
+    this.nextSpawnAt = this.lastTick + 420;
     this.animationId = requestAnimationFrame(this.tick);
   }
 
@@ -108,13 +144,14 @@ export class FruitArcade {
     this.objects = [];
     this.particles = [];
     this.halves = [];
+    this.splats = [];
     this.trail = [];
     this.score = 0;
     this.lives = 3;
     this.gameOver = false;
     this.bombFlash = 0;
     this.startedAt = performance.now();
-    this.nextSpawnAt = this.startedAt + 500;
+    this.nextSpawnAt = this.startedAt + 420;
     this.callbacks.onScoreChange(this.score);
     this.callbacks.onLivesChange(this.lives);
   }
@@ -133,7 +170,7 @@ export class FruitArcade {
   }
 
   setHandPoint(point: HandPoint) {
-    if (!point.visible) {
+    if (!point.visible || point.confidence < 0.42) {
       return;
     }
 
@@ -156,14 +193,14 @@ export class FruitArcade {
     const bounds = this.canvas.getBoundingClientRect();
     this.width = Math.max(320, bounds.width || window.innerWidth);
     this.height = Math.max(420, bounds.height || window.innerHeight);
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.6);
     this.canvas.width = Math.floor(this.width * dpr);
     this.canvas.height = Math.floor(this.height * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
 
   private tick = (time: number) => {
-    const delta = Math.min(time - this.lastTick, 34);
+    const delta = Math.min(time - this.lastTick, 32);
     this.lastTick = time;
 
     this.spawnIfNeeded(time);
@@ -181,34 +218,42 @@ export class FruitArcade {
     }
 
     const seconds = (time - this.startedAt) / 1000;
-    const waveSize = Math.min(4, 1 + Math.floor(seconds / 18) + Math.floor(Math.random() * 2));
+    const maxWaveSize = this.width < 620 ? 3 : 4;
+    const waveSize = Math.min(maxWaveSize, 1 + Math.floor(seconds / 20) + Math.floor(Math.random() * 2));
+
     for (let index = 0; index < waveSize; index += 1) {
-      const bombChance = Math.min(0.25, 0.11 + seconds * 0.003);
+      const bombChance = Math.min(0.22, 0.09 + seconds * 0.0028);
       this.spawnObject(Math.random() < bombChance ? "bomb" : "fruit", index, waveSize);
     }
 
-    this.nextSpawnAt = time + randomBetween(720, Math.max(430, 980 - seconds * 9));
+    this.nextSpawnAt = time + randomBetween(640, Math.max(420, 920 - seconds * 7));
   }
 
   private spawnObject(kind: GameKind, index: number, waveSize: number) {
     const skin = randomItem(FRUIT_SKINS);
+    const scale = clamp(this.width / 980, 0.68, 1);
     const radius =
-      kind === "bomb" ? randomBetween(34, 45) : randomBetween(skin.radiusMin, skin.radiusMax);
+      (kind === "bomb" ? randomBetween(34, 42) : randomBetween(skin.radiusMin, skin.radiusMax)) * scale;
     const laneWidth = this.width / (waveSize + 1);
     const laneX = laneWidth * (index + 1);
-    const startX = clamp(laneX + randomBetween(-laneWidth * 0.35, laneWidth * 0.35), radius, this.width - radius);
-    const startY = this.height + radius + randomBetween(10, 85);
+    const startX = clamp(laneX + randomBetween(-laneWidth * 0.12, laneWidth * 0.12), radius, this.width - radius);
+    const startY = this.height + radius + randomBetween(22, 92);
     const body = Bodies.circle(startX, startY, radius, {
-      frictionAir: 0.008,
-      restitution: 0.65,
+      collisionFilter: {
+        category: NO_COLLISION_CATEGORY,
+        mask: 0,
+      },
+      frictionAir: 0.0065,
+      isSensor: true,
       label: kind,
+      restitution: 0,
     });
-    const horizontalBias = (this.width * 0.5 - startX) / this.width;
+
     Body.setVelocity(body, {
-      x: horizontalBias * randomBetween(8, 13) + randomBetween(-2.8, 2.8),
-      y: -randomBetween(15, 22),
+      x: randomBetween(-1.9, 1.9),
+      y: -randomBetween(15.8, 22.5) * clamp(this.height / 760, 0.86, 1.12),
     });
-    Body.setAngularVelocity(body, randomBetween(-0.16, 0.16));
+    Body.setAngularVelocity(body, randomBetween(-0.15, 0.15));
     Composite.add(this.engine.world, body);
     this.objects.push({
       id: this.objectId,
@@ -226,7 +271,7 @@ export class FruitArcade {
     const remaining: GameObject[] = [];
     for (const object of this.objects) {
       const tooLow = object.body.position.y > this.height + object.radius * 3;
-      const tooOld = time - object.bornAt > 9000;
+      const tooOld = time - object.bornAt > 8200;
       if (object.sliced || tooLow || tooOld) {
         Composite.remove(this.engine.world, object.body);
       } else {
@@ -239,15 +284,15 @@ export class FruitArcade {
   private addSlicePoint(point: TrailPoint) {
     const previous = this.trail[this.trail.length - 1];
     this.trail.push(point);
-    this.trail = this.trail.filter((entry) => point.t - entry.t < 280);
+    this.trail = this.trail.filter((entry) => point.t - entry.t < 190);
 
-    if (!previous || point.t - previous.t > 150 || this.gameOver) {
+    if (!previous || point.t - previous.t > 120 || this.gameOver) {
       return;
     }
 
     const segmentLength = distance(previous, point);
     const speed = segmentLength / Math.max(point.t - previous.t, 1);
-    if (segmentLength < 7 || speed < 0.11) {
+    if (segmentLength < 4 || speed < 0.045) {
       return;
     }
 
@@ -257,13 +302,13 @@ export class FruitArcade {
       }
       const center = object.body.position;
       const hitDistance = distanceToSegment(center, previous, point);
-      if (hitDistance <= object.radius * 0.95) {
-        this.sliceObject(object, point, speed);
+      if (hitDistance <= object.radius * 1.04) {
+        this.sliceObject(object, point, speed, previous);
       }
     }
   }
 
-  private sliceObject(object: GameObject, point: Point, speed: number) {
+  private sliceObject(object: GameObject, point: Point, speed: number, previous: Point) {
     object.sliced = true;
     Composite.remove(this.engine.world, object.body);
     this.objects = this.objects.filter((entry) => entry.id !== object.id);
@@ -271,7 +316,7 @@ export class FruitArcade {
     if (object.kind === "bomb") {
       this.lives = Math.max(0, this.lives - 1);
       this.callbacks.onLivesChange(this.lives);
-      this.bombFlash = 360;
+      this.bombFlash = 380;
       this.addExplosion(object.body.position.x, object.body.position.y);
       if (this.lives === 0) {
         this.gameOver = true;
@@ -282,48 +327,116 @@ export class FruitArcade {
 
     this.score += 1;
     this.callbacks.onScoreChange(this.score);
-    this.addFruitBurst(object, point, speed);
+    this.addFruitBurst(object, point, previous, speed);
   }
 
-  private addFruitBurst(object: GameObject, point: Point, speed: number) {
+  private addFruitBurst(object: GameObject, point: Point, previous: Point, speed: number) {
     const center = object.body.position;
-    const burstVelocity = clamp(speed * 18, 4, 12);
+    const cutAngle = Math.atan2(point.y - previous.y, point.x - previous.x);
+    const normalAngle = cutAngle + Math.PI / 2;
+    const burstVelocity = clamp(speed * 18, 4.5, 13);
+
     for (const side of [-1, 1] as const) {
       this.halves.push({
-        x: center.x + side * object.radius * 0.18,
-        y: center.y,
-        vx: side * randomBetween(3.6, 6.4) + object.body.velocity.x * 0.4,
-        vy: randomBetween(-5.8, -2.4),
-        angle: object.body.angle,
-        angularVelocity: side * randomBetween(0.08, 0.18),
+        x: center.x + Math.cos(normalAngle) * side * object.radius * 0.24,
+        y: center.y + Math.sin(normalAngle) * side * object.radius * 0.24,
+        vx: object.body.velocity.x * 0.35 + Math.cos(normalAngle) * side * randomBetween(3.6, 6.6),
+        vy: object.body.velocity.y * 0.1 + Math.sin(normalAngle) * side * randomBetween(1.6, 4.8) - randomBetween(2.2, 4.7),
+        angle: cutAngle - Math.PI / 2 + side * 0.08,
+        angularVelocity: side * randomBetween(0.1, 0.2),
         radius: object.radius,
         side,
         skin: object.skin,
-        life: 760,
-        maxLife: 760,
+        life: 980,
+        maxLife: 980,
       });
     }
 
-    for (let index = 0; index < 24; index += 1) {
-      const angle = randomBetween(0, Math.PI * 2);
-      const force = randomBetween(1.5, burstVelocity);
+    this.addJuiceSplat(point.x, point.y, object.skin, cutAngle, burstVelocity);
+    this.addJuiceSplat(
+      center.x + Math.cos(cutAngle) * object.radius * 0.18,
+      center.y + Math.sin(cutAngle) * object.radius * 0.18,
+      object.skin,
+      cutAngle + randomBetween(-0.35, 0.35),
+      burstVelocity * 0.8,
+    );
+
+    for (let index = 0; index < 42; index += 1) {
+      const angle = cutAngle + randomBetween(-1.45, 1.45);
+      const force = randomBetween(1.4, burstVelocity);
       this.particles.push({
-        x: point.x + randomBetween(-6, 6),
-        y: point.y + randomBetween(-6, 6),
-        vx: Math.cos(angle) * force,
-        vy: Math.sin(angle) * force - randomBetween(0, 3),
-        color: index % 4 === 0 ? object.skin.fleshLight : object.skin.juice,
-        life: randomBetween(360, 650),
-        maxLife: 650,
-        size: randomBetween(3, 8),
+        x: point.x + randomBetween(-10, 10),
+        y: point.y + randomBetween(-10, 10),
+        vx: Math.cos(angle) * force + randomBetween(-2, 2),
+        vy: Math.sin(angle) * force - randomBetween(0, 4),
+        color: index % 5 === 0 ? object.skin.fleshLight : object.skin.juice,
+        life: randomBetween(420, 820),
+        maxLife: 820,
+        size: randomBetween(3, 9),
       });
+    }
+  }
+
+  private addJuiceSplat(x: number, y: number, skin: FruitSkin, angle: number, burst: number) {
+    const blob: SplatBlobPoint[] = [];
+    const blobPoints = Math.floor(randomBetween(9, 14));
+    for (let index = 0; index < blobPoints; index += 1) {
+      blob.push({
+        angle: (index / blobPoints) * Math.PI * 2,
+        radius: randomBetween(13, 34) * clamp(burst / 9, 0.72, 1.35),
+      });
+    }
+
+    const drops: SplatDrop[] = [];
+    const dropCount = Math.floor(randomBetween(9, 17));
+    for (let index = 0; index < dropCount; index += 1) {
+      const dropAngle = randomBetween(0, Math.PI * 2);
+      const distanceFromCenter = randomBetween(14, 82) * clamp(burst / 9, 0.72, 1.32);
+      drops.push({
+        x: Math.cos(dropAngle) * distanceFromCenter,
+        y: Math.sin(dropAngle) * distanceFromCenter,
+        rx: randomBetween(2.5, 9),
+        ry: randomBetween(4, 17),
+        angle: dropAngle + randomBetween(-0.6, 0.6),
+        accent: Math.random() > 0.82,
+      });
+    }
+
+    const streaks: SplatStreak[] = [];
+    for (let index = 0; index < 6; index += 1) {
+      const streakAngle = angle + randomBetween(-0.62, 0.62) + (index % 2 === 0 ? 0 : Math.PI);
+      streaks.push({
+        x: randomBetween(-8, 8),
+        y: randomBetween(-8, 8),
+        length: randomBetween(34, 104) * clamp(burst / 9, 0.78, 1.42),
+        width: randomBetween(3, 8),
+        angle: streakAngle,
+      });
+    }
+
+    this.splats.push({
+      x,
+      y,
+      color: skin.juice,
+      accent: skin.fleshLight,
+      angle,
+      scale: randomBetween(0.82, 1.18),
+      life: 7800,
+      maxLife: 7800,
+      blob,
+      drops,
+      streaks,
+    });
+
+    if (this.splats.length > 28) {
+      this.splats.splice(0, this.splats.length - 28);
     }
   }
 
   private addExplosion(x: number, y: number) {
-    for (let index = 0; index < 42; index += 1) {
+    for (let index = 0; index < 48; index += 1) {
       const angle = randomBetween(0, Math.PI * 2);
-      const force = randomBetween(3, 13);
+      const force = randomBetween(3, 14);
       this.particles.push({
         x,
         y,
@@ -332,7 +445,7 @@ export class FruitArcade {
         color: randomItem(["#f97316", "#fde047", "#fb7185", "#ffffff"]),
         life: randomBetween(420, 900),
         maxLife: 900,
-        size: randomBetween(4, 11),
+        size: randomBetween(4, 12),
       });
     }
   }
@@ -349,6 +462,10 @@ export class FruitArcade {
         life: particle.life - delta,
       }))
       .filter((particle) => particle.life > 0);
+    if (this.particles.length > 440) {
+      this.particles.splice(0, this.particles.length - 440);
+    }
+
     this.halves = this.halves
       .map((half) => ({
         ...half,
@@ -359,11 +476,19 @@ export class FruitArcade {
         life: half.life - delta,
       }))
       .filter((half) => half.life > 0);
+
+    this.splats = this.splats
+      .map((splat) => ({
+        ...splat,
+        life: splat.life - delta,
+      }))
+      .filter((splat) => splat.life > 0);
   }
 
   private draw(time: number) {
     this.ctx.clearRect(0, 0, this.width, this.height);
 
+    this.drawSplatters();
     this.drawObjects();
     this.drawHalves();
     this.drawParticles();
@@ -378,10 +503,58 @@ export class FruitArcade {
 
     if (this.bombFlash > 0) {
       this.ctx.save();
-      this.ctx.globalAlpha = Math.min(0.32, this.bombFlash / 900);
+      this.ctx.globalAlpha = Math.min(0.36, this.bombFlash / 920);
       this.ctx.fillStyle = "#ff2f2f";
       this.ctx.fillRect(0, 0, this.width, this.height);
-      drawSpark(this.ctx, { x: this.width * 0.5, y: this.height * 0.42 }, 130, this.bombFlash / 360);
+      drawSpark(this.ctx, { x: this.width * 0.5, y: this.height * 0.42 }, 130, this.bombFlash / 380);
+      this.ctx.restore();
+    }
+  }
+
+  private drawSplatters() {
+    for (const splat of this.splats) {
+      const fadeStart = splat.maxLife * 0.38;
+      const alpha = splat.life > fadeStart ? 0.84 : clamp(splat.life / fadeStart, 0, 1) * 0.84;
+      this.ctx.save();
+      this.ctx.translate(splat.x, splat.y);
+      this.ctx.rotate(splat.angle);
+      this.ctx.scale(splat.scale, splat.scale);
+      this.ctx.globalAlpha = alpha;
+
+      this.ctx.fillStyle = splat.color;
+      this.ctx.beginPath();
+      splat.blob.forEach((point, index) => {
+        const x = Math.cos(point.angle) * point.radius;
+        const y = Math.sin(point.angle) * point.radius;
+        if (index === 0) {
+          this.ctx.moveTo(x, y);
+        } else {
+          this.ctx.lineTo(x, y);
+        }
+      });
+      this.ctx.closePath();
+      this.ctx.fill();
+
+      this.ctx.lineCap = "round";
+      this.ctx.strokeStyle = splat.color;
+      for (const streak of splat.streaks) {
+        this.ctx.lineWidth = streak.width;
+        this.ctx.beginPath();
+        this.ctx.moveTo(streak.x, streak.y);
+        this.ctx.lineTo(
+          streak.x + Math.cos(streak.angle) * streak.length,
+          streak.y + Math.sin(streak.angle) * streak.length,
+        );
+        this.ctx.stroke();
+      }
+
+      for (const drop of splat.drops) {
+        this.ctx.fillStyle = drop.accent ? splat.accent : splat.color;
+        this.ctx.beginPath();
+        this.ctx.ellipse(drop.x, drop.y, drop.rx, drop.ry, drop.angle, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+
       this.ctx.restore();
     }
   }

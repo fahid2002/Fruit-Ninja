@@ -50,10 +50,9 @@ function mapLandmarkToDisplay(
   const displayedHeight = videoHeight * scale;
   const offsetX = (elementWidth - displayedWidth) / 2;
   const offsetY = (elementHeight - displayedHeight) / 2;
-  const sourceX = landmark.x * displayedWidth + offsetX;
 
   return {
-    x: elementWidth - sourceX,
+    x: landmark.x * displayedWidth + offsetX,
     y: landmark.y * displayedHeight + offsetY,
   };
 }
@@ -76,6 +75,8 @@ export function useHandTracker({
   const animationRef = useRef<number | null>(null);
   const callbackRef = useRef(onPoint);
   const runningRef = useRef(false);
+  const lastVideoTimeRef = useRef(-1);
+  const lastPointRef = useRef<HandPoint | null>(null);
   const [status, setStatus] = useState<CameraStatus>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -109,21 +110,43 @@ export function useHandTracker({
       return;
     }
 
-    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+    if (
+      video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+      video.currentTime !== lastVideoTimeRef.current
+    ) {
+      lastVideoTimeRef.current = video.currentTime;
       const now = performance.now();
       const result = landmarker.detectForVideo(video, now);
       const finger = getPrimaryFinger(result);
 
       if (finger) {
         const mapped = mapLandmarkToDisplay(video, finger);
-        callbackRef.current({
-          x: mapped.x,
-          y: mapped.y,
+        const previous = lastPointRef.current;
+        const elapsed = Math.max(now - (previous?.time ?? now), 1);
+        const blend = previous ? (elapsed > 42 ? 0.78 : 0.62) : 1;
+        const filtered = previous
+          ? {
+              x: previous.x + (mapped.x - previous.x) * blend,
+              y: previous.y + (mapped.y - previous.y) * blend,
+            }
+          : mapped;
+        const vx = previous ? (filtered.x - previous.x) / elapsed : 0;
+        const vy = previous ? (filtered.y - previous.y) / elapsed : 0;
+        const predicted = {
+          x: filtered.x + vx * 22,
+          y: filtered.y + vy * 22,
+        };
+        const point = {
+          x: predicted.x,
+          y: predicted.y,
           visible: true,
           confidence: 1 - Math.min(Math.max(finger.z, -0.25), 0.25),
           time: now,
-        });
+        };
+        lastPointRef.current = point;
+        callbackRef.current(point);
       } else {
+        lastPointRef.current = null;
         callbackRef.current({
           x: 0,
           y: 0,
@@ -156,8 +179,9 @@ export function useHandTracker({
         audio: false,
         video: {
           facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 960 },
+          height: { ideal: 540 },
+          frameRate: { ideal: 60, min: 30 },
         },
       });
       streamRef.current = stream;
@@ -174,9 +198,9 @@ export function useHandTracker({
             delegate: "GPU",
             modelAssetPath: MODEL_URL,
           },
-          minHandDetectionConfidence: 0.55,
-          minHandPresenceConfidence: 0.55,
-          minTrackingConfidence: 0.5,
+          minHandDetectionConfidence: 0.48,
+          minHandPresenceConfidence: 0.48,
+          minTrackingConfidence: 0.48,
           numHands: 1,
           runningMode: "VIDEO",
         });
