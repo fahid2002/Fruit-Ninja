@@ -178,15 +178,29 @@ export const FRUIT_SKINS: readonly FruitSkin[] = [
 ];
 
 function drawGloss(ctx: CanvasRenderingContext2D, radius: number) {
-  ctx.fillStyle = "rgba(255,255,255,0.34)";
+  ctx.fillStyle = "rgba(255,255,255,0.38)";
   ctx.beginPath();
   ctx.ellipse(-radius * 0.28, -radius * 0.37, radius * 0.18, radius * 0.34, -0.78, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "rgba(255,255,255,0.16)";
+  ctx.fillStyle = "rgba(255,255,255,0.18)";
   ctx.beginPath();
   ctx.ellipse(radius * 0.2, -radius * 0.18, radius * 0.11, radius * 0.18, 0.45, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawFloatingShadow(ctx: CanvasRenderingContext2D, radius: number) {
+  const shadow = ctx.createRadialGradient(radius * 0.12, radius * 0.46, radius * 0.08, radius * 0.12, radius * 0.48, radius * 1.16);
+  shadow.addColorStop(0, "rgba(0,0,0,0.42)");
+  shadow.addColorStop(0.62, "rgba(0,0,0,0.18)");
+  shadow.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.save();
+  ctx.fillStyle = shadow;
+  ctx.beginPath();
+  ctx.ellipse(radius * 0.16, radius * 0.44, radius * 0.86, radius * 0.42, 0.14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawLeaf(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, angle: number, color: string) {
@@ -207,40 +221,84 @@ function drawLeaf(ctx: CanvasRenderingContext2D, x: number, y: number, radius: n
 }
 
 function drawRoundFruit(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: number) {
-  const gradient = ctx.createRadialGradient(-radius * 0.4, -radius * 0.42, radius * 0.06, 0, 0, radius * 1.08);
+  const gradient = ctx.createRadialGradient(-radius * 0.36, -radius * 0.42, radius * 0.08, radius * 0.12, radius * 0.18, radius * 1.18);
   gradient.addColorStop(0, skin.fleshLight);
-  gradient.addColorStop(0.22, skin.peel);
-  gradient.addColorStop(0.72, skin.peel);
+  gradient.addColorStop(0.2, skin.peel);
+  gradient.addColorStop(0.66, skin.peel);
   gradient.addColorStop(1, skin.peelDark);
 
   ctx.fillStyle = gradient;
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.fill();
+
+  const shade = ctx.createRadialGradient(radius * 0.44, radius * 0.52, radius * 0.12, radius * 0.18, radius * 0.1, radius * 1.06);
+  shade.addColorStop(0, "rgba(0,0,0,0.2)");
+  shade.addColorStop(0.5, "rgba(0,0,0,0.03)");
+  shade.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = shade;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.lineWidth = Math.max(3, radius * 0.075);
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
+  ctx.strokeStyle = "rgba(255,255,255,0.32)";
   ctx.stroke();
 }
 
 function drawWatermelon(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: number) {
-  drawRoundFruit(ctx, skin, radius);
+  const gradient = ctx.createRadialGradient(-radius * 0.38, -radius * 0.42, radius * 0.08, radius * 0.16, radius * 0.2, radius * 1.22);
+  gradient.addColorStop(0, "#ceff52");
+  gradient.addColorStop(0.2, "#7dde25");
+  gradient.addColorStop(0.55, skin.peel);
+  gradient.addColorStop(0.84, "#25851f");
+  gradient.addColorStop(1, skin.peelDark);
+
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.98, 0, Math.PI * 2);
+  ctx.clip();
+
   ctx.lineCap = "round";
-  for (let index = -3; index <= 3; index += 1) {
-    ctx.strokeStyle = index % 2 === 0 ? "rgba(8,80,34,0.54)" : "rgba(165,238,49,0.42)";
-    ctx.lineWidth = Math.max(4, radius * 0.11);
+  for (let index = -4; index <= 4; index += 1) {
+    ctx.strokeStyle = index % 2 === 0 ? "rgba(7,77,32,0.74)" : "rgba(181,244,47,0.34)";
+    ctx.lineWidth = Math.max(5, radius * (index % 2 === 0 ? 0.14 : 0.08));
     ctx.beginPath();
-    ctx.moveTo(index * radius * 0.21, -radius * 0.88);
+    ctx.moveTo(index * radius * 0.2, -radius * 1.02);
     ctx.bezierCurveTo(
-      index * radius * 0.1 - radius * 0.1,
-      -radius * 0.28,
-      index * radius * 0.1 + radius * 0.22,
-      radius * 0.24,
-      index * radius * 0.26,
-      radius * 0.9,
+      index * radius * 0.08 - radius * 0.16,
+      -radius * 0.46,
+      index * radius * 0.11 + radius * 0.24,
+      radius * 0.28,
+      index * radius * 0.29,
+      radius * 1.02,
     );
     ctx.stroke();
   }
-  drawGloss(ctx, radius);
+
+  const sideShade = ctx.createRadialGradient(radius * 0.45, radius * 0.4, radius * 0.08, radius * 0.25, radius * 0.18, radius * 1.18);
+  sideShade.addColorStop(0, "rgba(0,0,0,0.22)");
+  sideShade.addColorStop(0.58, "rgba(0,0,0,0.04)");
+  sideShade.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = sideShade;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+
+  ctx.lineWidth = Math.max(3, radius * 0.06);
+  ctx.strokeStyle = "rgba(214,255,97,0.35)";
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.97, -2.7, 0.9);
+  ctx.stroke();
+
+  drawGloss(ctx, radius * 1.04);
 }
 
 function drawCitrus(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: number) {
@@ -569,10 +627,11 @@ export function drawFruit(
   angle: number,
 ) {
   ctx.save();
+  drawFloatingShadow(ctx, radius);
   ctx.rotate(angle);
-  ctx.shadowColor = "rgba(0,0,0,0.45)";
-  ctx.shadowBlur = 14;
-  ctx.shadowOffsetY = 8;
+  ctx.shadowColor = "rgba(0,0,0,0.5)";
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetY = 9;
 
   if (skin.shape === "watermelon") {
     drawWatermelon(ctx, skin, radius);
@@ -609,6 +668,59 @@ export function drawFruitHalf(
   ctx.shadowColor = "rgba(0,0,0,0.36)";
   ctx.shadowBlur = 10;
   ctx.shadowOffsetY = 5;
+
+  if (skin.shape === "watermelon") {
+    const startAngle = side === -1 ? Math.PI / 2 : -Math.PI / 2;
+    const endAngle = side === -1 ? (Math.PI * 3) / 2 : Math.PI / 2;
+    const fleshGradient = ctx.createRadialGradient(side * -radius * 0.18, -radius * 0.34, radius * 0.08, 0, 0, radius);
+    fleshGradient.addColorStop(0, skin.fleshLight);
+    fleshGradient.addColorStop(0.38, "#f12a3c");
+    fleshGradient.addColorStop(1, "#9f0e22");
+
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = fleshGradient;
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#f6ffc9";
+    ctx.lineWidth = Math.max(4, radius * 0.08);
+    ctx.stroke();
+    ctx.strokeStyle = skin.peel;
+    ctx.lineWidth = Math.max(7, radius * 0.16);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.96, startAngle, endAngle);
+    ctx.stroke();
+    ctx.strokeStyle = skin.peelDark;
+    ctx.lineWidth = Math.max(3, radius * 0.055);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 1.01, startAngle, endAngle);
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(255,255,255,0.72)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, -radius * 0.9);
+    ctx.lineTo(0, radius * 0.9);
+    ctx.stroke();
+
+    ctx.fillStyle = skin.seed;
+    for (let index = 0; index < 7; index += 1) {
+      const y = -radius * 0.56 + index * radius * 0.18;
+      const x = side * (radius * 0.22 + (index % 2) * radius * 0.14);
+      ctx.beginPath();
+      ctx.ellipse(x, y, radius * 0.045, radius * 0.09, 0.36 * side, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = "rgba(255,255,255,0.23)";
+    ctx.beginPath();
+    ctx.ellipse(side * radius * 0.25, -radius * 0.35, radius * 0.14, radius * 0.24, -0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
 
   ctx.beginPath();
   if (side === -1) {
@@ -654,7 +766,7 @@ export function drawFruitHalf(
     ctx.beginPath();
     ctx.arc(side * radius * 0.24, 0, radius * 0.38, 0, Math.PI * 2);
     ctx.fill();
-  } else if (skin.shape === "watermelon" || skin.shape === "kiwi" || skin.shape === "strawberry" || skin.shape === "apple") {
+  } else if (skin.shape === "kiwi" || skin.shape === "strawberry" || skin.shape === "apple") {
     ctx.fillStyle = skin.seed;
     for (let index = 0; index < 7; index += 1) {
       const y = -radius * 0.5 + index * radius * 0.17;
@@ -789,41 +901,67 @@ export function drawTrail(ctx: CanvasRenderingContext2D, trail: readonly TrailPo
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  for (let index = 1; index < trail.length; index += 1) {
-    const current = trail[index]!;
-    const previous = trail[index - 1]!;
-    const alpha = Math.max(0, 1 - current.age / 170);
-    if (alpha <= 0) {
-      continue;
+  ctx.globalCompositeOperation = "lighter";
+
+  const drawSegmentPass = (
+    color: string,
+    widthScale: number,
+    blur: number,
+    shadow: string,
+    alphaScale = 1,
+    yOffset = 0,
+  ) => {
+    ctx.strokeStyle = color;
+    ctx.shadowColor = shadow;
+    ctx.shadowBlur = blur;
+    for (let index = 1; index < trail.length; index += 1) {
+      const current = trail[index]!;
+      const previous = trail[index - 1]!;
+      const freshness = Math.max(0, 1 - current.age / 245);
+      if (freshness <= 0) {
+        continue;
+      }
+
+      const progress = index / Math.max(trail.length - 1, 1);
+      const taper = Math.sin(progress * Math.PI) * 0.72 + 0.28;
+      ctx.globalAlpha = freshness * alphaScale;
+      ctx.lineWidth = Math.max(1.2, widthScale * taper * freshness);
+      ctx.beginPath();
+      ctx.moveTo(previous.x, previous.y + yOffset);
+      ctx.lineTo(current.x, current.y + yOffset);
+      ctx.stroke();
     }
+  };
 
-    ctx.globalAlpha = alpha;
-    ctx.strokeStyle = "rgba(70,9,9,0.72)";
-    ctx.lineWidth = 18;
-    ctx.shadowColor = "rgba(255,44,44,0.8)";
-    ctx.shadowBlur = 18;
-    ctx.beginPath();
-    ctx.moveTo(previous.x, previous.y);
-    ctx.lineTo(current.x, current.y);
-    ctx.stroke();
+  drawSegmentPass("rgba(150,9,16,0.78)", 30, 24, "rgba(255,39,39,0.95)", 0.72, 2);
+  drawSegmentPass("rgba(255,222,222,0.9)", 18, 18, "rgba(255,255,255,0.95)", 0.88);
+  drawSegmentPass("rgba(255,255,255,0.98)", 9, 10, "rgba(255,255,255,1)", 1);
+  drawSegmentPass("rgba(129,216,255,0.95)", 3.8, 3, "rgba(90,196,255,0.85)", 0.85, -2);
 
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 9;
-    ctx.shadowColor = "rgba(255,255,255,0.9)";
+  const latest = trail[trail.length - 1]!;
+  const latestAlpha = Math.max(0, 1 - latest.age / 245);
+  if (latestAlpha > 0) {
+    ctx.globalAlpha = latestAlpha;
+    ctx.shadowColor = "rgba(255,255,255,0.95)";
     ctx.shadowBlur = 14;
+    ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.moveTo(previous.x, previous.y);
-    ctx.lineTo(current.x, current.y);
-    ctx.stroke();
+    ctx.arc(latest.x, latest.y, 4.5, 0, Math.PI * 2);
+    ctx.fill();
 
-    ctx.strokeStyle = "rgba(160,214,255,0.92)";
-    ctx.lineWidth = 3.5;
-    ctx.shadowBlur = 0;
-    ctx.beginPath();
-    ctx.moveTo(previous.x, previous.y - 2);
-    ctx.lineTo(current.x, current.y - 2);
-    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,244,182,0.85)";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "rgba(255,213,79,0.75)";
+    ctx.shadowBlur = 10;
+    for (let index = 0; index < 5; index += 1) {
+      const angle = (index / 5) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(latest.x + Math.cos(angle) * 7, latest.y + Math.sin(angle) * 7);
+      ctx.lineTo(latest.x + Math.cos(angle) * 15, latest.y + Math.sin(angle) * 15);
+      ctx.stroke();
+    }
   }
+
   ctx.restore();
 }
 

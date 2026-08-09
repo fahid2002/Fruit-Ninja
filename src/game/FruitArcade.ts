@@ -364,7 +364,7 @@ export class FruitArcade {
   private addSlicePoint(point: TrailPoint) {
     const previous = this.trail[this.trail.length - 1];
     this.trail.push(point);
-    this.trail = this.trail.filter((entry) => point.t - entry.t < 190);
+    this.trail = this.trail.filter((entry) => point.t - entry.t < 260);
 
     if (!this.playing || !previous || point.t - previous.t > 120 || this.gameOver) {
       return;
