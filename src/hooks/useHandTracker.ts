@@ -51,8 +51,10 @@ function mapLandmarkToDisplay(
   const offsetX = (elementWidth - displayedWidth) / 2;
   const offsetY = (elementHeight - displayedHeight) / 2;
 
+  const rawX = landmark.x * displayedWidth + offsetX;
+
   return {
-    x: landmark.x * displayedWidth + offsetX,
+    x: elementWidth - rawX,
     y: landmark.y * displayedHeight + offsetY,
   };
 }

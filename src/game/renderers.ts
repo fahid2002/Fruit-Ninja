@@ -6,6 +6,7 @@ export type FruitShape =
   | "lemon"
   | "lime"
   | "kiwi"
+  | "avocado"
   | "apple"
   | "banana"
   | "coconut"
@@ -86,15 +87,28 @@ export const FRUIT_SKINS: readonly FruitSkin[] = [
   {
     name: "Lemon",
     shape: "lemon",
-    peel: "#f7d61d",
-    peelDark: "#bb8e05",
-    flesh: "#fff29b",
-    fleshLight: "#fffbd1",
-    seed: "#9a7b0a",
-    juice: "#f4c917",
-    accent: "#ffe94b",
+    peel: "#f6dc2f",
+    peelDark: "#9f7906",
+    flesh: "#fff59d",
+    fleshLight: "#fffbd7",
+    seed: "#92710b",
+    juice: "#f5ca20",
+    accent: "#fff16b",
     radiusMin: 35,
     radiusMax: 47,
+  },
+  {
+    name: "Avocado",
+    shape: "avocado",
+    peel: "#243d1e",
+    peelDark: "#0c1f0c",
+    flesh: "#b9d85a",
+    fleshLight: "#eef6a8",
+    seed: "#8a4c25",
+    juice: "#96bc37",
+    accent: "#5d8526",
+    radiusMin: 39,
+    radiusMax: 50,
   },
   {
     name: "Lime",
@@ -247,6 +261,82 @@ function drawCitrus(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: numb
     ctx.arc(Math.cos(angle) * radius * 0.48, Math.sin(angle) * radius * 0.48, 1.8, 0, Math.PI * 2);
     ctx.fill();
   }
+  drawGloss(ctx, radius);
+}
+
+function drawLemon(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: number) {
+  ctx.save();
+  ctx.scale(1.18, 0.78);
+  const gradient = ctx.createRadialGradient(-radius * 0.42, -radius * 0.34, radius * 0.08, 0, 0, radius * 1.08);
+  gradient.addColorStop(0, skin.fleshLight);
+  gradient.addColorStop(0.2, "#ffe95d");
+  gradient.addColorStop(0.72, skin.peel);
+  gradient.addColorStop(1, skin.peelDark);
+
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.moveTo(-radius * 1.03, 0);
+  ctx.bezierCurveTo(-radius * 0.72, -radius * 0.9, radius * 0.72, -radius * 0.9, radius * 1.03, 0);
+  ctx.bezierCurveTo(radius * 0.72, radius * 0.9, -radius * 0.72, radius * 0.9, -radius * 1.03, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(115,79,4,0.35)";
+  ctx.lineWidth = Math.max(2.4, radius * 0.055);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(255,255,210,0.22)";
+  for (let index = 0; index < 26; index += 1) {
+    const angle = (index / 26) * Math.PI * 2;
+    const distanceFromCenter = radius * (0.18 + ((index * 37) % 58) / 100);
+    ctx.beginPath();
+    ctx.arc(Math.cos(angle) * distanceFromCenter, Math.sin(angle) * distanceFromCenter * 0.78, radius * 0.025, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+  drawGloss(ctx, radius * 0.94);
+}
+
+function drawAvocado(ctx: CanvasRenderingContext2D, skin: FruitSkin, radius: number) {
+  const peelGradient = ctx.createRadialGradient(-radius * 0.34, -radius * 0.42, radius * 0.08, 0, 0, radius * 1.12);
+  peelGradient.addColorStop(0, "#456f2d");
+  peelGradient.addColorStop(0.5, skin.peel);
+  peelGradient.addColorStop(1, skin.peelDark);
+
+  ctx.fillStyle = peelGradient;
+  ctx.beginPath();
+  ctx.moveTo(0, -radius * 1.08);
+  ctx.bezierCurveTo(-radius * 0.72, -radius * 0.94, -radius * 1.02, -radius * 0.22, -radius * 0.82, radius * 0.44);
+  ctx.bezierCurveTo(-radius * 0.58, radius * 1.12, radius * 0.58, radius * 1.12, radius * 0.82, radius * 0.44);
+  ctx.bezierCurveTo(radius * 1.02, -radius * 0.22, radius * 0.72, -radius * 0.94, 0, -radius * 1.08);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(5,19,8,0.5)";
+  ctx.lineWidth = Math.max(3.2, radius * 0.08);
+  ctx.stroke();
+
+  const fleshGradient = ctx.createRadialGradient(-radius * 0.26, -radius * 0.36, radius * 0.08, 0, radius * 0.08, radius * 0.78);
+  fleshGradient.addColorStop(0, skin.fleshLight);
+  fleshGradient.addColorStop(0.52, "#cde978");
+  fleshGradient.addColorStop(1, skin.accent);
+  ctx.fillStyle = fleshGradient;
+  ctx.beginPath();
+  ctx.ellipse(0, radius * 0.07, radius * 0.58, radius * 0.72, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const pitGradient = ctx.createRadialGradient(-radius * 0.16, radius * 0.12, radius * 0.04, radius * 0.03, radius * 0.24, radius * 0.32);
+  pitGradient.addColorStop(0, "#c68645");
+  pitGradient.addColorStop(0.58, skin.seed);
+  pitGradient.addColorStop(1, "#4f2612");
+  ctx.fillStyle = pitGradient;
+  ctx.beginPath();
+  ctx.ellipse(radius * 0.06, radius * 0.28, radius * 0.28, radius * 0.34, 0.12, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.28)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, radius * 0.07, radius * 0.58, radius * 0.72, 0, 0, Math.PI * 2);
+  ctx.stroke();
   drawGloss(ctx, radius);
 }
 
@@ -492,7 +582,11 @@ export function drawFruit(
     drawBanana(ctx, skin, radius);
   } else if (skin.shape === "coconut") {
     drawCoconut(ctx, skin, radius);
-  } else if (skin.shape === "orange" || skin.shape === "lemon" || skin.shape === "lime") {
+  } else if (skin.shape === "lemon") {
+    drawLemon(ctx, skin, radius);
+  } else if (skin.shape === "avocado") {
+    drawAvocado(ctx, skin, radius);
+  } else if (skin.shape === "orange" || skin.shape === "lime") {
     drawCitrus(ctx, skin, radius);
   } else if (skin.shape === "kiwi") {
     drawKiwi(ctx, skin, radius);
@@ -538,7 +632,16 @@ export function drawFruitHalf(
   ctx.lineTo(0, radius * 0.88);
   ctx.stroke();
 
-  if (skin.shape === "banana") {
+  if (skin.shape === "avocado") {
+    ctx.fillStyle = skin.fleshLight;
+    ctx.beginPath();
+    ctx.ellipse(side * radius * 0.22, 0, radius * 0.34, radius * 0.68, 0.08 * side, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = skin.seed;
+    ctx.beginPath();
+    ctx.ellipse(side * radius * 0.2, radius * 0.2, radius * 0.17, radius * 0.22, 0.12 * side, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (skin.shape === "banana") {
     ctx.fillStyle = skin.flesh;
     ctx.beginPath();
     ctx.ellipse(side * radius * 0.24, 0, radius * 0.34, radius * 0.82, 0.12 * side, 0, Math.PI * 2);
@@ -581,56 +684,96 @@ export function drawFruitHalf(
 export function drawBomb(ctx: CanvasRenderingContext2D, radius: number, angle: number) {
   ctx.save();
   ctx.rotate(angle);
-  ctx.shadowColor = "rgba(0,0,0,0.55)";
-  ctx.shadowBlur = 14;
-  ctx.shadowOffsetY = 8;
+  ctx.shadowColor = "rgba(0,0,0,0.62)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 10;
 
   const bodyGradient = ctx.createRadialGradient(
-    -radius * 0.38,
-    -radius * 0.42,
-    radius * 0.08,
+    -radius * 0.34,
+    -radius * 0.4,
+    radius * 0.06,
     0,
     0,
-    radius,
+    radius * 1.16,
   );
-  bodyGradient.addColorStop(0, "#74747d");
-  bodyGradient.addColorStop(0.42, "#17191d");
-  bodyGradient.addColorStop(1, "#030303");
+  bodyGradient.addColorStop(0, "#9a9ba3");
+  bodyGradient.addColorStop(0.2, "#3b3e45");
+  bodyGradient.addColorStop(0.68, "#14171c");
+  bodyGradient.addColorStop(1, "#020304");
 
   ctx.fillStyle = bodyGradient;
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = "#d92027";
-  ctx.lineWidth = Math.max(4, radius * 0.1);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.lineWidth = Math.max(2.5, radius * 0.06);
   ctx.beginPath();
-  ctx.arc(0, 0, radius * 0.86, -0.9, Math.PI * 1.36);
+  ctx.arc(0, 0, radius * 0.94, -2.78, 0.84);
   ctx.stroke();
 
-  ctx.strokeStyle = "rgba(255,255,255,0.24)";
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  ctx.fillStyle = "#3f3f46";
+  ctx.strokeStyle = "#e11d27";
+  ctx.lineWidth = Math.max(6, radius * 0.16);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.shadowColor = "rgba(255,31,31,0.35)";
+  ctx.shadowBlur = 8;
   ctx.beginPath();
-  ctx.roundRect(-radius * 0.22, -radius * 1.12, radius * 0.44, radius * 0.3, 4);
+  ctx.moveTo(-radius * 0.42, -radius * 0.42);
+  ctx.lineTo(radius * 0.42, radius * 0.42);
+  ctx.moveTo(radius * 0.42, -radius * 0.42);
+  ctx.lineTo(-radius * 0.42, radius * 0.42);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  const capGradient = ctx.createLinearGradient(0, -radius * 1.2, 0, -radius * 0.76);
+  capGradient.addColorStop(0, "#9ca3af");
+  capGradient.addColorStop(0.48, "#4b5563");
+  capGradient.addColorStop(1, "#1f2937");
+  ctx.fillStyle = capGradient;
+  ctx.beginPath();
+  ctx.roundRect(-radius * 0.27, -radius * 1.08, radius * 0.54, radius * 0.32, radius * 0.08);
   ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.3)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
 
-  ctx.strokeStyle = "#ffd33d";
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = "#2b1a0d";
+  ctx.lineWidth = Math.max(4, radius * 0.08);
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(radius * 0.05, -radius * 1.12);
-  ctx.bezierCurveTo(radius * 0.5, -radius * 1.5, radius * 0.55, -radius * 0.88, radius * 0.86, -radius * 1.22);
+  ctx.moveTo(radius * 0.02, -radius * 1.05);
+  ctx.bezierCurveTo(radius * 0.34, -radius * 1.34, radius * 0.62, -radius * 1.08, radius * 0.78, -radius * 1.32);
   ctx.stroke();
 
-  ctx.fillStyle = "#ff3d50";
+  ctx.strokeStyle = "#facc15";
+  ctx.lineWidth = Math.max(1.8, radius * 0.035);
   ctx.beginPath();
-  ctx.arc(radius * 0.9, -radius * 1.24, radius * 0.13, 0, Math.PI * 2);
+  ctx.moveTo(radius * 0.03, -radius * 1.08);
+  ctx.bezierCurveTo(radius * 0.34, -radius * 1.32, radius * 0.58, -radius * 1.12, radius * 0.74, -radius * 1.31);
+  ctx.stroke();
+
+  const flameX = radius * 0.8;
+  const flameY = -radius * 1.34;
+  const flameGradient = ctx.createRadialGradient(flameX, flameY, radius * 0.02, flameX, flameY, radius * 0.28);
+  flameGradient.addColorStop(0, "#ffffff");
+  flameGradient.addColorStop(0.3, "#fde047");
+  flameGradient.addColorStop(0.72, "#fb6d18");
+  flameGradient.addColorStop(1, "rgba(239,35,24,0.35)");
+
+  ctx.shadowColor = "rgba(255,130,22,0.95)";
+  ctx.shadowBlur = 16;
+  ctx.fillStyle = flameGradient;
+  ctx.beginPath();
+  ctx.moveTo(flameX, flameY - radius * 0.3);
+  ctx.bezierCurveTo(flameX + radius * 0.23, flameY - radius * 0.1, flameX + radius * 0.2, flameY + radius * 0.2, flameX, flameY + radius * 0.26);
+  ctx.bezierCurveTo(flameX - radius * 0.2, flameY + radius * 0.08, flameX - radius * 0.14, flameY - radius * 0.14, flameX, flameY - radius * 0.3);
+  ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "rgba(255,255,255,0.32)";
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "rgba(255,255,255,0.28)";
   ctx.beginPath();
   ctx.ellipse(-radius * 0.28, -radius * 0.3, radius * 0.16, radius * 0.28, -0.65, 0, Math.PI * 2);
   ctx.fill();

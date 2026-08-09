@@ -61,7 +61,8 @@ button {
   object-fit: cover;
   opacity: 0;
   filter: saturate(1.08) contrast(1.04);
-  transform: none;
+  transform: scaleX(-1);
+  transform-origin: center;
   z-index: 0;
 }
 

@@ -118,6 +118,7 @@ export class FruitArcade {
   private lastTick = performance.now();
   private animationId: number | null = null;
   private objectId = 0;
+  private nextBombScore = 10;
   private gameOver = false;
   private playing = false;
   private pointerDown = false;
@@ -164,6 +165,7 @@ export class FruitArcade {
     this.spawnQueue = [];
     this.score = 0;
     this.lives = 3;
+    this.nextBombScore = 10;
     this.gameOver = false;
     this.playing = false;
     this.bombFlash = 0;
@@ -255,17 +257,18 @@ export class FruitArcade {
     const maxWaveSize = this.width < 620 ? 3 : 5;
     const baseWaveSize = 1 + Math.floor(level / 2);
     const waveSize = clamp(baseWaveSize + (Math.random() < 0.35 + level * 0.025 ? 1 : 0), 1, maxWaveSize);
-    const bombChance = this.score < 8 ? 0 : Math.min(0.16, 0.035 + level * 0.012);
-    let bombsInWave = 0;
-    const maxBombsInWave = this.score < 25 ? 1 : 2;
+    const bombDue = this.score >= this.nextBombScore && !this.hasPendingBomb();
+    const extraBombChance = this.score >= 15 ? Math.min(0.3, 0.055 + level * 0.026) : 0;
+    const includeBomb = bombDue || (!this.hasPendingBomb() && Math.random() < extraBombChance);
+    const bombSlot = includeBomb ? Math.floor(randomBetween(0, waveSize)) : -1;
+
+    if (bombDue) {
+      this.nextBombScore += 10;
+    }
 
     this.spawnQueue = Array.from({ length: waveSize }, (_, index) => {
-      const canBomb = bombsInWave < maxBombsInWave && Math.random() < bombChance;
-      if (canBomb) {
-        bombsInWave += 1;
-      }
       return {
-        kind: canBomb ? "bomb" : "fruit",
+        kind: index === bombSlot ? "bomb" : "fruit",
         laneIndex: index,
         laneCount: waveSize,
       };
@@ -276,14 +279,15 @@ export class FruitArcade {
 
   private spawnObject(kind: GameKind, index: number, waveSize: number) {
     const skin = randomItem(FRUIT_SKINS);
-    const scale = clamp(this.width / 980, 0.68, 1);
+    const scale = clamp(this.width / 980, 0.72, 1.05);
     const radius =
-      (kind === "bomb" ? randomBetween(34, 42) : randomBetween(skin.radiusMin, skin.radiusMax)) * scale;
+      (kind === "bomb" ? randomBetween(40, 48) : randomBetween(skin.radiusMin, skin.radiusMax) * 1.1) *
+      scale;
     const laneWidth = this.width / (waveSize + 1);
     const mirroredIndex = Math.random() < 0.5 ? index : waveSize - index - 1;
     const laneX = laneWidth * (mirroredIndex + 1);
     const startX = clamp(laneX + randomBetween(-laneWidth * 0.1, laneWidth * 0.1), radius, this.width - radius);
-    const startY = this.height + radius + randomBetween(12, 54);
+    const startY = this.height + radius + randomBetween(0, 30);
     const body = Bodies.circle(startX, startY, radius, {
       collisionFilter: {
         category: NO_COLLISION_CATEGORY,
@@ -296,9 +300,13 @@ export class FruitArcade {
     });
 
     const level = Math.floor(this.score / 10);
-    const highArc = kind === "fruit" && Math.random() < Math.min(0.72, 0.44 + level * 0.035);
-    const launchAngle = (randomBetween(highArc ? 78 : 67, highArc ? 102 : 113) * Math.PI) / 180;
-    const speed = randomBetween(highArc ? 17.2 : 14.2, highArc ? 20.9 : 17.8) * clamp(this.height / 760, 0.88, 1.06);
+    const highArc = kind === "fruit" && Math.random() < Math.min(0.7, 0.38 + level * 0.03);
+    const launchAngle = (randomBetween(highArc ? 80 : 70, highArc ? 100 : 110) * Math.PI) / 180;
+    const speed =
+      (kind === "bomb"
+        ? randomBetween(19.2, 22.4)
+        : randomBetween(highArc ? 23.4 : 20.4, highArc ? 27.8 : 24.1)) *
+      clamp(this.height / 760, 0.94, 1.08);
     const horizontalDirection = startX < this.width * 0.5 ? 1 : -1;
     Body.setVelocity(body, {
       x: Math.cos(launchAngle) * speed * horizontalDirection + randomBetween(-1.2, 1.2),
@@ -330,6 +338,13 @@ export class FruitArcade {
         });
       }
     }
+  }
+
+  private hasPendingBomb() {
+    return (
+      this.objects.some((object) => object.kind === "bomb" && !object.sliced) ||
+      this.spawnQueue.some((spawn) => spawn.kind === "bomb")
+    );
   }
 
   private removeExpiredObjects(time: number) {
@@ -487,8 +502,8 @@ export class FruitArcade {
       accent: skin.fleshLight,
       angle,
       scale: randomBetween(0.82, 1.18),
-      life: 7800,
-      maxLife: 7800,
+      life: 2000,
+      maxLife: 2000,
       blob,
       drops,
       streaks,
@@ -579,8 +594,8 @@ export class FruitArcade {
 
   private drawSplatters() {
     for (const splat of this.splats) {
-      const fadeStart = splat.maxLife * 0.38;
-      const alpha = splat.life > fadeStart ? 0.84 : clamp(splat.life / fadeStart, 0, 1) * 0.84;
+      const fadeProgress = clamp(splat.life / splat.maxLife, 0, 1);
+      const alpha = 0.84 * Math.pow(fadeProgress, 0.78);
       this.ctx.save();
       this.ctx.translate(splat.x, splat.y);
       this.ctx.rotate(splat.angle);
